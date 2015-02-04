@@ -1,0 +1,3 @@
+  Use ioctl SIOCSIFADDR struct ether_addr *addr to set the mac address
+  Reallocate buffer if incoming frame is too big
+
