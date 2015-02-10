@@ -3,7 +3,7 @@
  * The remote half of thriftiness
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150203
+ * last modified 20150210
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -30,6 +30,9 @@
 #include "net.h"
 #include "retvals.h"
 
+/* Install name buffer, for comparisons */
+char installname[INSTALLNAMELEN];
+uint8_t key[KEYLEN];
 
 /* Wait for a connection or make a connection to a remote host, proxy comms
  * between us (pcap) and them */
@@ -47,6 +50,20 @@ int main(void) {
         if ((0 == sleepsec) && ('\0' != *endptr)) {
                 return RET_INV_SLEEP;
         }
+
+        /* Make sure the installname isn't too long, and copy it to a buffer */
+        if ('\0' == INSTALLNAME[0]) {
+                exit(EX_INV_INL);
+        } else if (INSTALLNAMELEN < strnlen(INSTALLNAME, INSTALLNAMELEN + 1)) {
+                exit(EX_INV_INL);
+        }
+        memset(installname, 0, INSTALLNAMELEN);
+        strncpy(installname, INSTALLNAME, INSTALLNAMELEN);
+
+        /* Copy the key to a buffer */
+        memset(key, 0, sizeof(key));
+        memcpy(key, KEY, sizeof(key));
+
         /* Set up the stream to make randomish nonces */
         for (;;) {
                 /* Clear the error variable */

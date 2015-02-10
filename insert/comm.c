@@ -3,7 +3,7 @@
  * Functions related to communications
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150204
+ * last modified 20150210
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -24,7 +24,8 @@
 
 #include <limits.h>
 #include <stdint.h>
-#include <stdio.h> /* TODO: Remove this */
+#include <stdio.h> /* DEBUG */
+#include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 
@@ -35,13 +36,14 @@
 
 /* Handshake with insert */
 int handshake(fd) {
-        char junk[MAXJUNKSIZE]; /* Initial junk data to wait on */
-        char *endptr;
-        int junksize; /* Number of junk bytes to read */
-        int nread, toread;
-        uint8_t nonce[8];
-        int ret;
-        char installname[INSTALLNAMELEN+1]; /* Install name */
+        uint8_t junk[MAXJUNKSIZE];      /* Initial junk data to wait on */
+        char *endptr;                   /* Used in strtol */
+        int junksize;                   /* Number of junk bytes to read */
+        uint8_t nonce[8];               /* Nonce for this connection */
+        int ret;                        /* Return value */
+        int i;                          /* Index variable */
+        uint8_t rxname[INSTALLNAMELEN]; /* Received install name */
+
         printf("In handshake()\n"); /* DEBUG */
 
         /* Work out how much junk to read */
@@ -51,37 +53,56 @@ int handshake(fd) {
                 /* Unable to convert JUNKSIZE */
                 return RET_INV_JUNK;
         }
+        if (0 > junksize) {
+                return RET_INV_JUNK;
+        }
+
 
         printf("reading %i bytes of junk\n", junksize); /* DEBUG */
-        
         /* Read that much data */
-        /* TODO: Time out after N seconds */
-        toread = junksize;
-        nread = 0;
-        while (0 < toread) {
-                if (-1 == (nread = (recv(fd, junk, toread, MSG_WAITALL)))) {
-                        return RET_ERR_READ;
-                }
-                toread -= nread;
+        if (0 != recv_all(fd, junk, junksize)) {
+                return RET_ERR_JUNK;
         }
-        printf("Read junk\n");
+        printf("Read junk\n"); /* DEBUG */
 
         /* Make the nonce */
         make_nonce(nonce);
 
         /* Send the nonce */
-        int i;printf("Sending Nonce: ");for(i = 0; i < 8; ++i){printf("%02X ",nonce[i]);}printf("\n");/* DEBUG */
-        if (0 > (ret = send_all(fd, nonce, 8))) {
-                return ret;
+        printf("Sending Nonce: ");for(i = 0; i < 8; ++i){printf("%02X ",nonce[i]);}printf("\n");/* DEBUG */
+        if (0 != (ret = send_all(fd, nonce, 8))) {
+                return RET_ERR_NONCE;
         }
 
+        /* Initialize the crypto streams for this connection. */
+        streams_init(nonce);
+
         /* Wait for the install name */
+        memset(rxname, 0, sizeof(rxname));
+        if (0 != recv_enc(fd, rxname, INSTALLNAMELEN)) {
+                return RET_ERR_RIN;
+        }
+        printf("Got install name: %s\n", rxname);
+
+        /* Make sure it's what we expect */
+        ret = 0;
+        for (i = 0; i < INSTALLNAMELEN; ++i) {
+                ret |= rxname[i] ^ installname[i];
+        }
+        if (0 != ret) {
+                return RET_INV_RIN;
+        }
+
+        /* Send it back */
+        if (0 != send_enc(fd, rxname, INSTALLNAMELEN)) {
+                return RET_ERR_SIN;
+        }
 
         return 0;
 }
 
 /* Send ALL the len bytes starting at b to tofd. */
-int send_all(int tofd, uint8_t *b, int len) {
+int send_all(int tofd, uint8_t *b, size_t len) {
         int nsent; /* Number of bytes sent */
         int nleft; /* Number of bytes left to send */
         int ret;   /* Return code */
@@ -89,7 +110,7 @@ int send_all(int tofd, uint8_t *b, int len) {
         nleft = len;
         ret = -1;
         /* Keep going until all the data's been sent */
-        while (nleft) {
+        while (0 < nleft) {
                 /* Try to send the data */
                 if (-1 == (ret = send(tofd, (void*)(b+nsent), nleft,
                                                 MSG_NOSIGNAL))) {
@@ -103,4 +124,42 @@ int send_all(int tofd, uint8_t *b, int len) {
         return 0;
 }
 
-/* TODO: recv_all */
+/* Receive len bytes from fmfd int b */
+int recv_all(int fmfd, uint8_t *b, size_t len) {
+        int nread; /* Number of bytes read */
+        int nleft; /* Number of bytes left to read */
+        int ret;
+        nread = 0;
+        nleft = len;
+        ret = -1;
+        /* Read bytes until we've got enough */
+        while (0 < nleft) {
+                if (-1 == (ret = recv(fmfd, (void*)(b+nread), nleft,
+                                                MSG_WAITALL))) {
+                        return RET_ERR_RECV;
+                }
+        }
+        return 0;
+}
+
+/* Encrypt (with txctx) and send the n bytes at b to fd. */
+int send_enc(int fd, uint8_t *b, size_t n) {
+        /* Encrypt the buffer */
+        txencrypt(b, n);
+        /* Send it */
+        return send_all(fd, b, n);
+}
+
+/* Decrypt (with rxctx) n bytes from fd into b. */
+int recv_enc(int fd, uint8_t *b, size_t n) {
+        int ret; /* Return value */
+        /* Zero the buffer */
+        memset(b, 0, n);
+        /* Receive data into it */
+        if (0 != (ret = recv_all(fd, b, n))) {
+                return ret;
+        }
+        /* Decrypt the data */
+        rxdecrypt(b, n);
+        return 0;
+}

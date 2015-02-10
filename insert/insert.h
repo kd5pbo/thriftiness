@@ -3,7 +3,7 @@
  * Defines and such for insert
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150204
+ * last modified 20150210
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -31,15 +31,15 @@
  * binary.  The general idea is that instead of passing flags to the command,
  * the values are edited in the binary before running with bvi or dd or
  * something along those lines.  Variable-length strings are padded on the
- * right with '\0's followed by an 'x' to allow for easier replacing when
- * needed.
+ * right with a nonzero number of '\0's followed by a single character to allow
+ * for easier replacing when needed.
  */
 
 /* 32-byte encryption key.  Does not have to be printable.  Bytes after the
- * 32nd byte will be ignored. */
+ * 32nd byte will be ignored.  NULL bytes may be embedded in the middle of the
+ * key or added to the end.  Specifying a key less than 32 bytes will likely
+ * cause crashes or other unpredictable behavior. */
 #define KEY "012345678901234567890123456789AB"
-/* Maximum key length in bytes. */
-#define KEYMAX 32
 /* Address and port for listening (or connecting).  A leading c will cause
  * insert to connect to the address, and a leading l will cause insert to
  * listen on the address.  Note that this needs to be configured. */
@@ -64,7 +64,8 @@
  * leave room for editing the binary, unless it's always going to be a fixed
  * length, like a UUID.  The name may not be longer than INSTALLNAMELEN bytes,
  * but may be shorter (or null-padded on the right).  Only the portion before
- * the first null byte is compared with what is sent by shift. */
+ * the first null byte is compared with what is sent by shift, though the
+ * comparison will be done in constant time. */
 #define INSTALLNAME "0001\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0i"
 #define INSTALLNAMELEN 1024
 /* The number of bytes of data to read (and ignore) before insert starts the
@@ -75,6 +76,9 @@
  * read junk during the handshake (though only JUNKSIZE bytes will be read). */
 #define MAXJUNKSIZE 1024
 
+/*******************************************
+ * Nothing below here is user-configurable *
+ *******************************************/
 /* Macros to stringify a define */
 #define STR_HELPER(x) #x
 #define STR(x) STR_HELPER(x)
@@ -82,6 +86,9 @@
 /*
  * Global variables
  */
+extern char installname[INSTALLNAMELEN];
+#define KEYLEN 32
+extern uint8_t key[KEYLEN];
 
 /*
  * Function prototypes

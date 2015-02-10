@@ -3,7 +3,7 @@
  * Functions definitions related to encryption/decryption
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150204
+ * last modified 20150210
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -33,8 +33,11 @@ chacha20_ctx noncectx;
 extern int noncestream_init_done; /* Nonzero after noncestream_init() */
 
 /* Contexts for sending and receiving */
-chacha20_ctx txctx;
-chacha20_ctx rxctx;
+extern chacha20_ctx txctx;
+extern chacha20_ctx rxctx;
+
+/* Initialize the two crypto streams. */
+void streams_init(uint8_t nonce[8]);
 
 /* Initialize the stream used to send nonces */
 void noncestream_init();
@@ -42,5 +45,11 @@ void noncestream_init();
 /* Get the next nonce */
 void make_nonce(uint8_t nonce[8]);
 extern uint64_t nonce_ctr; /* Number of nonces sent */
+
+/* Encrypt n bytes at b with txctx for sending. */
+void txencrypt(uint8_t *b, size_t n);
+
+/* Decrypt n (received) bytes at b with rxctx. */
+void rxdecrypt(uint8_t *b, size_t n);
 
 #endif /* HAVE_CRYPTO_H */

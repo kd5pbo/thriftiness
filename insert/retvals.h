@@ -3,7 +3,7 @@
  * Return values for insert.c
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150126
+ * last modified 20150210
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -37,11 +37,17 @@
 #define RET_ERR_ACC    -7 /* Error accepting connection */
 #define RET_ERR_CON    -8 /* Error connecting */
 #define RET_INV_JUNK   -9 /* Invalid JUNKSIZE */
-#define RET_ERR_READ  -10 /* Error during a read(2) from the network */
+#define RET_ERR_JUNK  -10 /* Error reading junk */
 #define RET_INV_TIME  -11 /* Could not get time from time(3) */
-#define EX_KEY_LONG   -12 /* KEY is too long */
+#define EX_INV_KEY    -12 /* Key is too short */
 #define RET_ERR_SEND  -13 /* Error sending ALL the data */
 #define RET_ERR_STO   -14 /* Unable to set socket send/receive timeouts */
-
+#define EX_CRYPTDONE  -15 /* Crypto already set up */
+#define RET_ERR_RECV  -16 /* Error receiving ALL the data */
+#define RET_ERR_NONCE -17 /* Error sending nonce */
+#define RET_ERR_RIN   -18 /* Error receiving install name */
+#define EX_INV_INL    -19 /* Install name is too long (or "") */
+#define RET_INV_RIN   -20 /* Received install name is wrong */
+#define RET_ERR_SIN   -21 /* Error sending the install name */
 
 #endif /* #ifndef HAVE_RETVALS_H */
