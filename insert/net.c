@@ -149,24 +149,3 @@ int peer_call(void) {
         }
         return fd;
 }
-
-/* Set send/receive timeouts on a socket */
-int set_txrx_timeouts(int fd) {
-        struct timeval t;
-        socklen_t optlen;
-        /* Timeout after two seconds */
-        memset((void*)&t, 0, sizeof(t));
-        t.tv_sec = TXRXTO;
-        t.tv_usec = 0; /* Should be optimized out */
-        optlen = sizeof(t);
-
-        /* Set the timeouts */
-        if (-1 == setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, optlen)) {
-                return RET_ERR_STO;
-        }
-        if (-1 == setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, optlen)) {
-                return RET_ERR_STO;
-        }
-        
-        return 0;
-}

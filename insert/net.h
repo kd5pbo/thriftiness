@@ -34,7 +34,4 @@ int peer_wait(void);
 /* Connect to shift */
 int peer_call(void);
 
-/* Set send/receive timeouts on a socket */
-int set_txrx_timeouts(int fd);
-
 #endif /* HAVE_NET_H */

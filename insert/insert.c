@@ -84,12 +84,6 @@ int main(void) {
                         seterr(remfd);
                         goto TRYAGAIN;
                 }
-                /* Set send/receive timeouts */
-                if (0 > (ret = set_txrx_timeouts(remfd))) {
-                        close(remfd);
-                        seterr(ret);
-                        goto TRYAGAIN;
-                }
                 /* Attemp to handshake */
                 if (0 > (ret = handshake(remfd))) {
                         /* If it fails, close the connection, try again */
