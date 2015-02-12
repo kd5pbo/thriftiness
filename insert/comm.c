@@ -3,7 +3,7 @@
  * Functions related to communications
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150210
+ * last modified 20150211
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -138,21 +138,33 @@ int recv_all(int fmfd, uint8_t *b, size_t len) {
                                                 MSG_WAITALL))) {
                         return RET_ERR_RECV;
                 }
+                nleft -= ret;
+                nread += ret;
         }
         return 0;
 }
 
 /* Encrypt (with txctx) and send the n bytes at b to fd. */
 int send_enc(int fd, uint8_t *b, size_t n) {
+        uint8_t *ebuf; /* Buffer for encrypted data */
+        int ret;       /* Return value */
+
+        /* Allocate buffer */
+        ebuf = calloc(n, sizeof(uint8_t));
+        /* Make a copy of the data */
+        memcpy(ebuf, b, n);
         /* Encrypt the buffer */
-        txencrypt(b, n);
+        txencrypt(ebuf, n);
         /* Send it */
-        return send_all(fd, b, n);
+        ret = send_all(fd, ebuf, n);
+        free(ebuf);
+        return ret;
 }
 
 /* Decrypt (with rxctx) n bytes from fd into b. */
 int recv_enc(int fd, uint8_t *b, size_t n) {
         int ret; /* Return value */
+
         /* Zero the buffer */
         memset(b, 0, n);
         /* Receive data into it */
