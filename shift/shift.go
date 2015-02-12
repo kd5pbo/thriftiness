@@ -52,6 +52,13 @@ func mymain() int {
 	var tun *os.File
 	/* Parse command-line flags */
 	confflags.Parse(nil)
+
+	/* Warn user if he's not root */
+	/* TODO: Update for systems in which 0 isn't root */
+	if u := os.Geteuid(); 0 != u {
+		log.Printf("Running as non-root user (uid %v).  This may "+
+			"cause problems.", u)
+	}
 	/* Try to open a tun device */
 	tun, tunname, err := make_tun()
 	if nil != err {
