@@ -23,9 +23,11 @@ package main
  */
 
 import (
+	"crypto/subtle"
 	"flag"
 	"fmt"
 	"net"
+	"strconv"
 )
 
 var (
@@ -35,8 +37,10 @@ var (
 		"with -name, including size of -name.")
 	junk = flag.String("junk", "GET / HTTP/1.1\r\n",
 		"Junk data in handshake")
-	nonceLen = 8
 )
+
+/* Number of bytes in the nonce */
+const nonceLen = 8
 
 /* Get a connection with the peer */
 func get_peer() (net.Conn, error) {
@@ -73,25 +77,59 @@ CONNECT:
 /* Handshake with insert.  Returns the nonce value sent by insert. */
 func handshake(c net.Conn) error {
 	/* Say Hello */
-	debug("Sending %v bytes of junk: %v", len(*junk), *junk)
+	debug("Sending %v bytes of junk: %v",
+		len(*junk), strconv.QuoteToASCII(*junk))
 	if err := sendAll(c, []byte(*junk)); nil != err {
 		return err
 	}
 	/* Get the nonce */
-	nonce, err := readN(c, nonceLen)
+	nonce, err := recvAll(c, nonceLen)
 	if nil != err {
 		return err
 	}
-	debug("Nonce is %X\n", nonce)
+	debug("Nonce is %02X\n", nonce)
+
+	/* Initialize crypto */
+	var nonceArr [nonceLen]byte
+	for i, v := range nonce {
+		nonceArr[i] = v
+	}
+	makeCryptors(nonceArr)
 
 	/* Null-pad our name out to insertNameLen bytes */
-	name := []byte(*insertName)
-	name = append(name, make([]byte, *insertNameLen-uint(len(name)))...)
-	fmt.Printf("Name: %v", name) /* DEBUG */
-	/* Send our idea of the name */
-	sendAll(c, []byte(*insertName))
+	txnamelong := []byte(*insertName)
+	txnamelong = append(txnamelong, make([]byte,
+		*insertNameLen-uint(len(txnamelong)))...)
 
-	/* TODO: Finish this */
+	/* Work out how many null-padded bytes there are */
+	txnameshort, txnulls := trimTrailingNulls(txnamelong)
+
+	/* Send our idea of the name */
+	debug("Sending name %v with %v trailing null bytes",
+		strconv.QuoteToASCII(string(txnameshort)), txnulls)
+	if err := sendEnc(c, txnamelong); nil != err {
+		return fmt.Errorf("sending name: %v", err)
+	}
+	verbose("Sent name: %v", strconv.QuoteToASCII(string(txnameshort)))
+
+	/* Get (hopefully) the same name back */
+	debug("Waiting on insert to send name back in %v byte message",
+		*insertNameLen)
+	rxnamelong, err := recvEnc(c, int(*insertNameLen))
+	if nil != err {
+		return fmt.Errorf("receiving name: %v", err)
+	}
+	rxnameshort, rxnulls := trimTrailingNulls(rxnamelong)
+	verbose("Got name: %v", strconv.QuoteToASCII(string(rxnameshort)))
+
+	/* Make sure the two match */
+	if 1 != subtle.ConstantTimeCompare(txnamelong, rxnamelong) {
+		return fmt.Errorf("Received name (%v with %v trailing nulls) "+
+			"is different than expected (%v with %v trailing "+
+			"nulls)",
+			strconv.QuoteToASCII(string(rxnameshort)), rxnulls,
+			strconv.QuoteToASCII(string(txnameshort)), txnulls)
+	}
 
 	return nil
 }
@@ -116,7 +154,7 @@ func sendAll(c net.Conn, b []byte) error {
 }
 
 /* Read n bytes from the conn */
-func readN(c net.Conn, n int) ([]byte, error) {
+func recvAll(c net.Conn, n int) ([]byte, error) {
 	nRead := 0      /* Number of bytes sent */
 	buf := []byte{} /* Output buffer */
 
@@ -134,4 +172,52 @@ func readN(c net.Conn, n int) ([]byte, error) {
 		nRead += r
 	}
 	return buf, nil
+}
+
+/* Encrypt and send b to c */
+func sendEnc(c net.Conn, b []byte) error {
+	/* Copy b into a local buffer */
+	ebuf := make([]byte, len(b))
+	copy(ebuf, b)
+	/* Encrypt data */
+	encrypt(ebuf)
+	/* Send it */
+	return sendAll(c, ebuf)
+}
+
+/* Read and decrypt n bytes from c */
+func recvEnc(c net.Conn, n int) ([]byte, error) {
+	/* Get n bytes */
+	b, err := recvAll(c, n)
+	if nil != err {
+		return nil, err
+	}
+	/* Decrypt them */
+	decrypt(b)
+	return b, nil
+}
+
+/* Trim the null bytes from the end of a byte slice, return a trimmed copy and
+the number of null bytes at the end */
+func trimTrailingNulls(b []byte) ([]byte, int) {
+	nulls := 0            /* Number of trailing nulls */
+	lastind := len(b) - 1 /* Last non-null index before trailing nulls */
+
+	/* Find the last non-null byte */
+	for ; lastind >= 0; lastind-- {
+		if 0 != b[lastind] {
+			break
+		}
+		nulls++
+	}
+	lastind++
+
+	/* Make a slice to hold the non-null bits */
+	trimmed := make([]byte, lastind)
+	/* Copy the bytes to the slice */
+	for i := 0; i < lastind; i++ {
+		trimmed[i] = b[i]
+	}
+
+	return trimmed, nulls
 }

@@ -23,24 +23,64 @@ package main
  */
 
 import (
+	"crypto/cipher"
 	"flag"
-	//	"github.com/codahale/chacha20"
+	"fmt"
+	"github.com/codahale/chacha20"
+	"time"
 )
 
 var (
 	key = flag.String("k", "012345678901234567890123456789AB",
 		"Encryption key.  Must be 32 bytes long.  May contain "+
 			"non-ascii characters.")
-	timeoff = flag.Int("o", 0, "Time offset.  This number of seconds "+
+	timeoff = flag.Int64("o", 0, "Time offset.  This number of seconds "+
 		"will be added to the current time to match the target's "+
 		"idea of the time.  May be negative.")
+
+	/* Encryption and decryption streams */
+	txStream cipher.Stream
+	rxStream cipher.Stream
 )
 
-/* Return a new crypt.Stream with the key and time-based nonce.  Stoi indicates
-whether it's the shift-to-insert stream or the insert-to-shift stream */
-func newCryptor(stoi bool, seqnum int) {
+/* Generate the two crypt.Streams given the nonce sent by insert */
+func makeCryptors(nonce [nonceLen]byte) error {
+	timedNonce := make([]byte, 8)
 	/* Get the time */
-	//var now int64 = time.Now().Unix()
-	/* Generate the nonce */
-	/* TODO: Finish this */
+	var now int64 /* Just in case time.Unix()'s type changes */
+	now = time.Now().Unix() + *timeoff
+
+	/* Generate the time-adjusted nonce */
+	for i, n := range nonce {
+		/* Should never happen */
+		if 0 > i {
+			return fmt.Errorf("unpossible negative nonce index")
+		}
+		timedNonce[i] = n ^ byte((now>>(8*uint(i)))&0xFF)
+	}
+	debug("Time-adjusted nonce: %02X", timedNonce)
+	/* TODO: Make sure key is 32 bytes long early */
+
+	/* Make Streams */
+	var err error
+	timedNonce[0] &= 0xFC
+	if txStream, err = chacha20.New([]byte(*key), timedNonce); nil != err {
+		return err
+	}
+	timedNonce[0] |= 0x03
+	if rxStream, err = chacha20.New([]byte(*key), timedNonce); nil != err {
+		return err
+	}
+
+	return nil
+}
+
+/* Encrypt data in-place with txStream */
+func encrypt(d []byte) {
+	txStream.XORKeyStream(d, d)
+}
+
+/* Decrypt data in-place with rxStream */
+func decrypt(d []byte) {
+	rxStream.XORKeyStream(d, d)
 }
