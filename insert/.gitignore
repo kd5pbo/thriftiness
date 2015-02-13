@@ -28,4 +28,6 @@
 *.x86_64
 *.hex
 
-a.out.core
+# Compiled binary and coredump
+insert
+insert.core
