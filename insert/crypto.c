@@ -155,3 +155,13 @@ void txencrypt(uint8_t *b, size_t n) {
 void rxdecrypt(uint8_t *b, size_t n) {
         chacha20_decrypt(&rxctx, b, b, n);
 }
+
+/* Compare the n bytes at a with the n bytes at b in constant time.  Returns 0
+ * if the two sets of bytes are equal. */
+int constcmp(uint8_t *a, uint8_t *b, int n) {
+        int ret;
+        ret = 0;
+        for (i = 0; i < n; ++i) {
+                ret |= a[i] ^ b[i];
+        }
+}

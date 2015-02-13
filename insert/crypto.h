@@ -52,4 +52,11 @@ void txencrypt(uint8_t *b, size_t n);
 /* Decrypt n (received) bytes at b with rxctx. */
 void rxdecrypt(uint8_t *b, size_t n);
 
+/* Put the hash of the n bytes at b in h */
+void hash(uint8_t h[DIGESTLEN], uint8_t *b, int n);
+
+/* Compare the n bytes at a with the n bytes at b in constant time.  Returns 0
+ * if the two sets of bytes are equal. */
+int constcmp(uint8_t *a, uint8_t *b, int n);
+
 #endif /* HAVE_CRYPTO_H */

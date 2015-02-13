@@ -85,11 +85,7 @@ int handshake(fd) {
         printf("Got install name: %s\n", rxname);
 
         /* Make sure it's what we expect */
-        ret = 0;
-        for (i = 0; i < INSTALLNAMELEN; ++i) {
-                ret |= rxname[i] ^ installname[i];
-        }
-        if (0 != ret) {
+        if (0 != (ret = consttmp(rxname, installname, INSTALLNAMELEN))) {
                 return RET_INV_RIN;
         }
 
