@@ -48,23 +48,25 @@ Data Transfer
 ---------------
 
 Every ethernet frame (or whatever insert is set to capture) is prepended with
-the size of the data in two little-endian bytes, and appended with the 16-byte
-result of xoring the size and all the bytes in the data.  On error (mitm?) the
-connections are dropped with no fanfare: shift SIGKILL's itself if it detects
-the error, and insert closes the connection in the normal manner.
+the size of the as two network-byte-order bytes, and appended with the SHA512
+hash of the size and the data.
 
 Diagrams
 --------
 
 Handshake
 =========
-Shift                                                              Insert
+Shift      Insert
 
-                              --Connected--
-18 Bytes of arbitrary data -->
-                              <--Nonce (lower 32 bits of time, encrypted)
-                INSTALLNAME-->
-                              <--INSTALLNAME
+----Connected----
+
+Arbitrary data-->
+
+<-----------Nonce
+
+INSTALLNAME----->
+
+<-----INSTALLNAME
 
 
 Nonce
@@ -73,11 +75,11 @@ Nonce
 3210987654321098765432109876543210987654321098765432101234567890
 <--Encrypted time, from shift--><----time(3) & 0xFFFFFFFC---->DB
 
-where DB (direction bytes) is 11 for insert->shift and 00 for shift->insert
-data.
+DB (direction bytes) is 11 for insert->shift and 00 for shift->insert data.
 
 
-Data
+Message
 ====
 16 bits---->|<-Variable length->|<-16 bits
 Data Length |      Payload      | Checksum
+<-------Checksummed part------->|
