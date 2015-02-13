@@ -1,3 +1,5 @@
+package main
+
 /*
  * mktun_openbsd.go
  * OpenBSD-specific source to make the tun(4) device
@@ -19,7 +21,6 @@
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
-package main
 
 import (
 	"flag"
