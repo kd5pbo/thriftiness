@@ -3,7 +3,7 @@
  * The remote half of thriftiness
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150210
+ * last modified 20150213
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -20,6 +20,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,8 +32,12 @@
 #include "retvals.h"
 
 /* Install name buffer, for comparisons */
-char installname[INSTALLNAMELEN];
+uint8_t installname[INSTALLNAMELEN];
 uint8_t key[KEYLEN];
+
+/* Error "returned" from read/write threads */
+int reterr;             /* Error itself */
+pthread_mutex_t retmtx; /* Mutex to lock reterr */
 
 /* Wait for a connection or make a connection to a remote host, proxy comms
  * between us (pcap) and them */
@@ -41,6 +46,7 @@ int main(void) {
         int remfd;
         char *endptr;
         int ret;
+        int i;
         if (-1 == setenv("FOO", "bar", 1)) { /* DEBUG */
                 printf("Setenv fail\n"); /* DEBUG */
         } /* DEBUG */
@@ -58,11 +64,17 @@ int main(void) {
                 exit(EX_INV_INL);
         }
         memset(installname, 0, INSTALLNAMELEN);
-        strncpy(installname, INSTALLNAME, INSTALLNAMELEN);
+        for (i = 0; i < strnlen(INSTALLNAME, INSTALLNAMELEN); ++i) {
+                installname[i] = INSTALLNAME[i];
+        }
 
         /* Copy the key to a buffer */
         memset(key, 0, sizeof(key));
         memcpy(key, KEY, sizeof(key));
+
+        /* Initialize thread return integer and mutex */
+        reterr = 0;
+        pthread_mutex_init(retmtx, NULL);
 
         /* Set up the stream to make randomish nonces */
         for (;;) {
@@ -93,9 +105,14 @@ int main(void) {
                 }
 
                 /* TODO: Start pcap going */
+                /* TODO: Start pthread to receive data from pcap and send to shift */
+                /* TODO: Call function to receive data from shift and put it on the network */
+                shift_to_insert(remfd, NULL);
 
-                /* TODO: Finish this */
-                /* TODO: Read timeout */
+                /* TODO: Wait for insert->shift thread to end */
+                /* TODO: seterr(reterr) */
+                /* TODO: Implement set_reterr */
+
 TRYAGAIN:
                 close(remfd);
                 sleep(sleepsec);
@@ -149,3 +166,18 @@ giveup:
         return;
 }
 
+/* Safely reterr to r if it's not already set */
+void set_reterr(int r) {
+        /* If it's already set, give up */
+        if (0 != reterr) {
+                return;
+        }
+        /* Lock reterr */
+        pthread_mutex_lock(&retmtx);
+        /* Change it if it's still 0 */
+        if (0 == reterr) {
+                reterr = r;
+        }
+        /* Unlock reterr */
+        pthread_mutex_unlock(&retmtx);
+}

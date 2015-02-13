@@ -85,7 +85,7 @@ int handshake(fd) {
         printf("Got install name: %s\n", rxname);
 
         /* Make sure it's what we expect */
-        if (0 != (ret = consttmp(rxname, installname, INSTALLNAMELEN))) {
+        if (0 != (ret = constcmp(rxname, installname, INSTALLNAMELEN))) {
                 return RET_INV_RIN;
         }
 

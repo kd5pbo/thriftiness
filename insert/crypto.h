@@ -3,7 +3,7 @@
  * Functions definitions related to encryption/decryption
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150210
+ * last modified 20150213
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -20,10 +20,12 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include "chacha20_simple.h"
-
 #ifndef HAVE_CRYPTO_H
 #define HAVE_CRYPTO_H
+
+#include "chacha20_simple.h"
+#include "insert.h"
+#include "sha2.h"
 
 /* Seeded the random number generator */
 extern int random_seeded; /* Nonzero after seed_random() */
@@ -51,9 +53,6 @@ void txencrypt(uint8_t *b, size_t n);
 
 /* Decrypt n (received) bytes at b with rxctx. */
 void rxdecrypt(uint8_t *b, size_t n);
-
-/* Put the hash of the n bytes at b in h */
-void hash(uint8_t h[DIGESTLEN], uint8_t *b, int n);
 
 /* Compare the n bytes at a with the n bytes at b in constant time.  Returns 0
  * if the two sets of bytes are equal. */

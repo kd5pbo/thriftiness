@@ -43,6 +43,8 @@
 #ifndef SHA2_H
 #define SHA2_H
 
+#include <stdint.h>
+
 #define SHA224_DIGEST_SIZE ( 224 / 8)
 #define SHA256_DIGEST_SIZE ( 256 / 8)
 #define SHA384_DIGEST_SIZE ( 384 / 8)
@@ -84,11 +86,10 @@ typedef struct {
 typedef sha256_ctx sha224_ctx;
 
 void sha224_init(sha224_ctx *ctx);
-void sha224_update(sha224_ctx *ctx, const unsigned char *message,
+void sha224_update(sha224_ctx *ctx, const uint8_t *message,
                    unsigned int len);
-void sha224_final(sha224_ctx *ctx, unsigned char *digest);
-void sha224(const unsigned char *message, unsigned int len,
-            unsigned char *digest);
+void sha224_final(sha224_ctx *ctx, uint8_t *digest);
+void sha224(const uint8_t *message, unsigned int len, uint8_t *digest);
 
 //void sha256_init(sha256_ctx * ctx);
 //void sha256_update(sha256_ctx *ctx, const unsigned char *message,

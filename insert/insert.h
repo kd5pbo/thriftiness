@@ -3,7 +3,7 @@
  * Defines and such for insert
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150210
+ * last modified 20150213
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -23,6 +23,7 @@
 #ifndef HAVE_INSERT_H
 #define HAVE_INSERT_H
 
+#include <pthread.h>
 
 /*
  * COMPILED-IN VALUES
@@ -86,9 +87,12 @@
 /*
  * Global variables
  */
-extern char installname[INSTALLNAMELEN];
-#define KEYLEN 32
+extern uint8_t installname[INSTALLNAMELEN];
+#define KEYLEN 32 /* Max key length */
 extern uint8_t key[KEYLEN];
+extern int reterr; /* Error "returned" by the first tx/rx thread to error */
+extern pthread_mutex_t retmtx; /* Mutex to lock reterr */
+#define DIGESTLEN SHA224_DIGEST_SIZE /* Length of message digest (hash) */
 
 /*
  * Function prototypes
@@ -106,6 +110,9 @@ int peer_wait();
 
 /* Connect to shift */
 int peer_call();
+
+/* Safely reterr to r if it's not already set */
+void set_reterr(int r);
 
 
 #endif /* #ifdef HAVE_INSERT_H */

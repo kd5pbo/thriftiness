@@ -48,8 +48,9 @@ Data Transfer
 ---------------
 
 Every ethernet frame (or whatever insert is set to capture) is prepended with
-the size of the as two network-byte-order bytes, and appended with the SHA512
-hash of the size and the data.
+the size of the data (exclusive of the size and checksum)  as two unsigned
+network-byte-order bytes, and appended with the SHA224 hash of the size and the
+data.
 
 Diagrams
 --------

@@ -3,7 +3,7 @@
  * Functions related to encryption/decryption
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150210
+ * last modified 20150213
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -160,8 +160,10 @@ void rxdecrypt(uint8_t *b, size_t n) {
  * if the two sets of bytes are equal. */
 int constcmp(uint8_t *a, uint8_t *b, int n) {
         int ret;
+        int i;
         ret = 0;
         for (i = 0; i < n; ++i) {
                 ret |= a[i] ^ b[i];
         }
+        return ret;
 }

@@ -49,5 +49,6 @@
 #define EX_INV_INL    -19 /* Install name is too long (or "") */
 #define RET_INV_RIN   -20 /* Received install name is wrong */
 #define RET_ERR_SIN   -21 /* Error sending the install name */
+#define RET_ERR_HASH  -22 /* Received and computed hash values differed */
 
 #endif /* #ifndef HAVE_RETVALS_H */
