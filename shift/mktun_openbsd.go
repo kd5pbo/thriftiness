@@ -46,7 +46,48 @@ var (
 )
 
 const (
-	MTUWARN = 2 * *14 /* Expected MTU limit */)
+	MTUWARN = 2 * *14 /* Expected MTU limit */
+)
+
+/* Struct representing a tunnel.  Implements the Tunnel interface */
+type TunOpenBSD struct {
+	f *os.File /* /dev/tun file */
+}
+
+/* Read and return a frame from the kernel */
+func (t *TunOpenBSD) Read() ([]byte, error) {
+	/* Read buffer.  We should never fill this */
+	buf := make([]byte, 2*MTUWARN)
+	/* Block until we have data */
+	n, err := t.f.Read(buf)
+	if nil != err {
+		return nil, err
+	}
+	/* If we read more than MTUWARN bytes, something's buggy */
+	if n > MTUWARN {
+		return nil, fmt.Errorf("read a %v-byte ethernet frame from %v.  This is "+
+			"way too big and likely indicates a bug.", n)
+	}
+	/* Give back the read bytes */
+	return buf[:n], nil
+}
+
+/* Write a frame to the kernel */
+func (t *TunOpenBSD) Write(b []byte) error {
+	/* Send the frame to the kernel */
+	n, err := t.f.Write(b)
+	if nil != err {
+		return fmt.Errorf("only wrote %v/%v bytes: %v", n, len(b))
+	}
+	return nil
+}
+
+/* Close the tunnel */
+func (t *TunOpenBSD) Close() error {
+	return t.f.Close()
+}
+
+/* TODO: Make make_tun return a TunOpenBSD, and rename it to something Goish */
 
 /* Make and open a tun(4) device. */
 func make_tun() (*os.File, string, error) {
