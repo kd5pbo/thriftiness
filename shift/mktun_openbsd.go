@@ -41,12 +41,26 @@ var (
 		"DHCP).")
 	netmask = flag.String("nm", "", "Netmask.  Will only be set if an "+
 		"IP address is specified.")
+	layer = flag.Int("layer", 2, "Tunnel layer.  May be 2 for a layer 2 "+
+		"(Ethernet) tunnel or 3 for a layer 3 (IP) tunnel.")
+)
+
+/* Constants to describe what sort of tunnel we're making */
+const (
+	LAYER_ETH = 2
+	LAYER_IP  = 3
 )
 
 /* Make and open a tun(4) device. */
 func make_tun() (*os.File, string, error) {
 	var t *os.File = nil /* Tun device */
 	var devname = ""     /* Name of tun device */
+
+	/* Make sure layer is either 2 or 3 */
+	if LAYER_ETH != *layer && LAYER_IP != *layer {
+		return nil, fmt.Errorf("invalid -layer, should be %v or %v", LAYER_ETH, LAYER_IP)
+	}
+
 	/* Validate MAC and IP Addres */
 	if "" != *mac && !regexp.MustCompile(`^[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:`+
 		`[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:[0-9A-Fa-f]{2}:`+
@@ -57,6 +71,7 @@ func make_tun() (*os.File, string, error) {
 		`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`).MatchString(*ip) {
 		return nil, "", fmt.Errorf("Invalid IP address: %v", *ip)
 	}
+
 	/* Try successive device numbers until one works */
 	for i := 0; i < 256; i++ {
 		/* Work out which device to open */
@@ -71,28 +86,34 @@ func make_tun() (*os.File, string, error) {
 		debug("Opened /dev/%v", devname)
 		break
 	}
+
 	/* If we still have no device, give up */
 	if nil == t {
 		return nil, "", fmt.Errorf("unable to open any tun device")
 	}
 
-	/* Set device to layer 2 mode */
-	if output, err := exec.Command("/sbin/ifconfig", devname,
-		"link0").CombinedOutput(); nil != err {
-		return nil, "", fmt.Errorf("setting link0: %v (output: %v)",
-			err, strings.TrimSpace(string(output)))
-	}
-	//o, e := exec.Command("ifconfig").CombinedOutput() /* DEBUG */
-	//log.Printf("(%v) %v", e, string(o)) /* DEBUG */
-	/* Set mac address if one is given */
-	if "" != *mac {
+	/* Set device to layer 2 mode if we're meant to */
+	if LAYER_ETH == *layer {
 		if output, err := exec.Command("/sbin/ifconfig", devname,
-			"lladdr", *mac).CombinedOutput(); nil != err {
-			return nil, "", fmt.Errorf("setting mac address (%v): %v "+
-				"(output %v)",
-				*mac, err, strings.TrimSpace(string(output)))
+			"link0").CombinedOutput(); nil != err {
+			return nil, "", fmt.Errorf("setting link0: %v "+
+				"(output: %v)",
+				err, strings.TrimSpace(string(output)))
+		}
+		/* Set mac address if one is given */
+		if "" != *mac {
+			if output, err := exec.Command(
+				"/sbin/ifconfig", devname, "lladdr",
+				*mac).CombinedOutput(); nil != err {
+				return nil, "", fmt.Errorf("setting mac "+
+					"address (%v): %v (output %v)", *mac,
+					err, strings.TrimSpace(string(output)))
+			}
 		}
 	}
+
+	//o, e := exec.Command("ifconfig").CombinedOutput() /* DEBUG */
+	//log.Printf("(%v) %v", e, string(o)) /* DEBUG */
 	/* Set the IP address if one is given */
 	if "" != *ip {
 		if output, err := exec.Command("/sbin/ifconfig", devname,
