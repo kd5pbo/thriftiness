@@ -41,7 +41,12 @@ var (
 		"DHCP).")
 	netmask = flag.String("nm", "", "Netmask.  Will only be set if an "+
 		"IP address is specified.")
+	mtu = flag.UInt("mtu", 1500, "MTU.  If 0 is specified, the default "+
+		"will be used.")
 )
+
+const (
+	MTUWARN = 2 * *14 /* Expected MTU limit */)
 
 /* Make and open a tun(4) device. */
 func make_tun() (*os.File, string, error) {
@@ -97,20 +102,41 @@ func make_tun() (*os.File, string, error) {
 
 	//o, e := exec.Command("ifconfig").CombinedOutput() /* DEBUG */
 	//log.Printf("(%v) %v", e, string(o)) /* DEBUG */
+
 	/* Set the IP address if one is given */
 	if "" != *ip {
 		if output, err := exec.Command("/sbin/ifconfig", devname,
 			"inet", *ip).CombinedOutput(); nil != err {
-			return nil, "", fmt.Errorf("setting IP address: %v "+
-				"(output %v)",
-				err, strings.TrimSpace(string(output)))
+			return nil, "", fmt.Errorf("setting IP address (%v): "+
+				"%v (output %v)",
+				*ip, err, strings.TrimSpace(string(output)))
 		}
 		/* Set the netmask if it's given */
 		if "" != *netmask {
 			if err := exec.Command("/sbin/ifconfig", devname,
 				"netmask", *netmask); nil != err {
-				return nil, "", fmt.Errorf("setting netmask: %v")
+				return nil, "", fmt.Errorf("setting netmask "+
+					"(%v): %v (output %v)",
+					*netmask, err,
+					strings.TrimSpace(string(output)))
 			}
+		}
+	}
+
+	/* Set the MTU if one is given */
+	if *mtu > MTUWARN {
+		log.Printf("MTU (%v) is unusually high.  It probably should "+
+			"be lower", *mtu)
+	}
+	if *mtu < 0 {
+		return nil, "", fmt.Errorf("MTU (%v) less than 0", *mtu)
+	}
+	if 0 != *mtu {
+		if output, err := exec.Command("/sbin/ifconfig", devname,
+			"mtu", strconv.Itoa(*mtu)); nil != err {
+			return nil, "", fmt.Errorf("setting mtu (%v): %v "+
+				"(output %v)",
+				*mtu, err, strings.TrimSpace(string(output)))
 		}
 	}
 	return t, devname, nil
