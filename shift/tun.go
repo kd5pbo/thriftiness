@@ -23,9 +23,15 @@ package main
  */
 
 /* Interface representing a platform-independent tunnel.  Each mktun_* must
-provide a make_tun function that implements this. */
+provide a function of type MakeTunFunc. */
 type Tunnel interface {
 	Read() ([]byte, error) /* Read the next frame from the tunnel */
 	Write([]byte) error    /* Write a frame to the tunnel */
 	Close()                /* Close the tunnel */
 }
+
+/* MakeTunFunc serves to document the type of the MakeTun function in each of
+the mktun_* source files.  The returned value should be a struct that satisfies
+the Tunnel interface, a string describing the tunnel, such as "tun0" or "tap2",
+and the customary error-or-nil */
+type MakeTunFunc func() (Tunnel, string, error)

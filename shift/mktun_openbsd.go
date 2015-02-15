@@ -87,10 +87,8 @@ func (t *TunOpenBSD) Close() error {
 	return t.f.Close()
 }
 
-/* TODO: Make make_tun return a TunOpenBSD, and rename it to something Goish */
-
 /* Make and open a tun(4) device. */
-func make_tun() (*os.File, string, error) {
+func MakeTun() (*TunOpenBSD, string, error) {
 	var t *os.File = nil /* Tun device */
 	var devname = ""     /* Name of tun device */
 
@@ -180,7 +178,7 @@ func make_tun() (*os.File, string, error) {
 				*mtu, err, strings.TrimSpace(string(output)))
 		}
 	}
-	return t, devname, nil
+	return &TunOpenBSD{f: t}, devname, nil
 }
 
 /* Destroy the tunnel */

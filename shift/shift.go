@@ -60,7 +60,7 @@ func mymain() int {
 			"cause problems.", u)
 	}
 	/* Try to open a tun device */
-	tun, tunname, err := make_tun()
+	tun, tunname, err := MakeTun()
 	if nil != err {
 		log.Printf("Unable to make tun device: %v", err)
 		return -1
