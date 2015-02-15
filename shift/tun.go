@@ -22,12 +22,15 @@ package main
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+/* An ethernet frame is just a byte array */
+type Frame []byte
+
 /* Interface representing a platform-independent tunnel.  Each mktun_* must
 provide a function of type MakeTunFunc. */
 type Tunnel interface {
-	Read() ([]byte, error) /* Read the next frame from the tunnel */
-	Write([]byte) error    /* Write a frame to the tunnel */
-	Close()                /* Close the tunnel */
+	Read() (Frame, error) /* Read the next frame from the tunnel */
+	Write(Frame, error)   /* Write a frame to the tunnel */
+	Close()               /* Close the tunnel */
 }
 
 /* MakeTunFunc serves to document the type of the MakeTun function in each of
