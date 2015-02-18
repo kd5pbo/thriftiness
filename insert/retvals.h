@@ -3,7 +3,7 @@
  * Return values for insert.c
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150210
+ * last modified 20150218
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -50,5 +50,6 @@
 #define RET_INV_RIN   -20 /* Received install name is wrong */
 #define RET_ERR_SIN   -21 /* Error sending the install name */
 #define RET_ERR_HASH  -22 /* Received and computed hash values differed */
+#define RET_DISCON    -23 /* Shift disconnected */
 
 #endif /* #ifndef HAVE_RETVALS_H */
