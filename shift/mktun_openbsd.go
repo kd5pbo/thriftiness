@@ -54,7 +54,8 @@ const (
 
 /* Struct representing a tunnel.  Implements the Tunnel interface */
 type TunOpenBSD struct {
-	f *os.File /* /dev/tun file */
+	f       *os.File /* /dev/tun file */
+	devname string   /* Device name */
 }
 
 /* Read and return a frame from the kernel */
@@ -88,14 +89,17 @@ func (t *TunOpenBSD) Write(b Frame) error {
 
 /* Close the tunnel */
 func (t *TunOpenBSD) Close() error {
-	return t.f.Close()
-
-	if output, err := exec.Command("/sbin/ifconfig", devname,
-		"destroy").CombinedOutput(); nil != err {
+	cerr := t.f.Close()
+	if output, err := exec.Command(
+		"/sbin/ifconfig",
+		t.devname,
+		"destroy",
+	).CombinedOutput(); nil != err {
 		debug("Unable to destroy %v: %v (output %v)",
-			devname, err, strings.TrimSpace(string(output)))
+			t.devname, err, strings.TrimSpace(string(output)))
 	}
-	debug("Destroyed %v", devname)
+	debug("Destroyed %v", t.devname)
+	return cerr
 }
 
 /* Make and open a tun(4) device. */
@@ -208,5 +212,10 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		return nil, "", fmt.Errorf("Bringing %v up: %v (output %v)",
 			devname, err, output)
 	}
-	return &TunOpenBSD{f: t}, devname, nil
+	return &TunOpenBSD{f: t, devname: devname}, devname, nil
+}
+
+/* Report the maximum frame length */
+func (t *TunOpenBSD) MaxFrameLen() uint {
+	return uint(*mtu)
 }
