@@ -125,6 +125,10 @@ void streams_init(uint8_t nonce[8]) {
         uint8_t timed_nonce[8]; /* Nonce xored with time */
         int i;
 
+        /* Zero the contexts */
+        memset(&txctx, 0, sizeof(txctx));
+        memset(&rxctx, 0, sizeof(rxctx));
+
         /* Get the current time */
         now = time(NULL);
 
@@ -141,8 +145,11 @@ void streams_init(uint8_t nonce[8]) {
 
         /* Make the two keystreams */
         timed_nonce[0] &= 0xFC;
+        printf("SIN: ");for (i = 0; i < 8; ++i){printf("%02X",timed_nonce[i]);}printf("\n");
         chacha20_setup(&rxctx, key, KEYLEN, timed_nonce);
         timed_nonce[0] |= 0x03;
+        printf("ISN: ");for (i = 0; i < 8; ++i){printf("%02X",timed_nonce[i]);}printf("\n");
+        printf("ISK: ");for (i = 0; i < KEYLEN; ++i){printf("%02X",key[i]);}printf("\n");
         chacha20_setup(&txctx, key, KEYLEN, timed_nonce);
 }
 

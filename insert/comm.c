@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
+#include <errno.h> /* DEBUG */
 #include <limits.h>
 #include <stdint.h>
 #include <stdio.h> /* DEBUG */
@@ -82,7 +83,7 @@ int handshake(fd) {
         if (0 != recv_enc(fd, rxname, INSTALLNAMELEN)) {
                 return RET_ERR_RIN;
         }
-        printf("Got install name: %s\n", rxname);
+        printf("Got install name:\n\t%s\n", rxname);
 
         /* Make sure it's what we expect */
         if (0 != (ret = constcmp(rxname, installname, INSTALLNAMELEN))) {
@@ -90,6 +91,7 @@ int handshake(fd) {
         }
 
         /* Send it back */
+        printf("Sending name: %s\n", rxname);
         if (0 != send_enc(fd, rxname, INSTALLNAMELEN)) {
                 return RET_ERR_SIN;
         }
@@ -111,6 +113,9 @@ int send_all(int tofd, uint8_t *b, size_t len) {
                 if (-1 == (ret = send(tofd, (void*)(b+nsent), nleft,
                                                 MSG_NOSIGNAL))) {
                         return RET_ERR_SEND;
+                } else if (0 == ret) { /* DISCONNECT */
+                        printf("Disconnect detected on send.\n"); /* DEBUG */
+                        return RET_DISCON;
                 }
                 /* Update counts */
                 nleft -= ret;
@@ -128,29 +133,41 @@ int recv_all(int fmfd, uint8_t *b, size_t len) {
         nread = 0;
         nleft = len;
         ret = -1;
+        printf("Got a request for %i bytes off the wire.\n", len); /* DEBUG */
         /* Read bytes until we've got enough */
         while (0 < nleft) {
+                errno = 0; /* DEBUG */
                 if (-1 == (ret = recv(fmfd, (void*)(b+nread), nleft,
                                                 MSG_WAITALL))) {
+                        if (EAGAIN == errno) {printf("Recv timeout\n");}/* DEBUG */
+
                         return RET_ERR_RECV;
+                } else if (0 == ret) { /* DISCONNECT */
+                        printf("Disconnect detected on receive.\n"); /* DEBUG */
+                        return RET_DISCON;
                 }
+                        
                 nleft -= ret;
                 nread += ret;
         }
         return 0;
 }
 
+/* TODO: Work out why reads are non-blocking */
+
 /* Encrypt (with txctx) and send the n bytes at b to fd. */
 int send_enc(int fd, uint8_t *b, size_t n) {
         uint8_t *ebuf; /* Buffer for encrypted data */
         int ret;       /* Return value */
 
+        printf("pbuf[0]: %02X\n", b[0]);
         /* Allocate buffer */
         ebuf = calloc(n, sizeof(uint8_t));
         /* Make a copy of the data */
         memcpy(ebuf, b, n);
         /* Encrypt the buffer */
         txencrypt(ebuf, n);
+        printf("cbuf[0]: %02X\n", ebuf[0]);
         /* Send it */
         ret = send_all(fd, ebuf, n);
         free(ebuf);

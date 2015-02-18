@@ -25,33 +25,77 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/kd5pbo/confflags"
 	"github.com/kd5pbo/easylogger"
 	"log"
 	"os"
+	"strconv"
 )
 
-var (
-	addr = flag.String("addr", ":31337", "Address for listening or "+
-		"connecting.")
-	listen = flag.Bool("l", false, "Listen (the default).  May not be "+
-		"specifed with -c.")
-	connect = flag.Bool("c", false, "Connect.  May not be specified with "+
-		"-l.")
-	ipv4 = flag.Bool("4", false, "Force IPv4.  May not be specified "+
-		"with -6.")
-	ipv6 = flag.Bool("6", false, "Force IPv6.  May not be specified "+
-		"with -4.")
-)
+var ()
 
 /* Logger variables */
 var verbose, debug = easylogger.Generate(true)
 
 func main() { os.Exit(mymain()) }
 func mymain() int {
-	var tun *os.File
+	/* Flags */
+	var (
+		addr = flag.String("addr", ":31337", "Address for "+
+			"listening or connecting.")
+		connect = flag.Bool("c", false, "Don't listen (the default), "+
+			"but rather connect to the address specified by "+
+			"-addr.")
+		ipv4 = flag.Bool("4", false, "Force IPv4.  May not be "+
+			"specified with -6.")
+		ipv6 = flag.Bool("6", false, "Force IPv6.  May not be "+
+			"specified with -4.")
+		insertName = flag.String("name", "0001", "Name set in "+
+			"insert to deter replay attacks")
+		insertNameLen = flag.Uint("nlen", 1024, "Length of data to "+
+			"send with -name, including size of -name.")
+		junk = flag.String("junk", "GET / HTTP/1.1\r\n", "Junk data "+
+			"in handshake")
+		key = flag.String("k", "012345678901234567890123456789AB",
+			"Encryption key.  Must be 32 bytes long.  May "+
+				"contain non-ascii characters.")
+		timeoff = flag.Int64("o", 0, "Time offset.  This number of "+
+			"seconds will be added to the current time to match "+
+			"the target's idea of the time.  May be negative.")
+	)
+
 	/* Parse command-line flags */
 	confflags.Parse(nil)
+
+	/* Work out whether to use IPv4 or IPv6 */
+	ipv := 0
+	/* For IPv4 */
+	if *ipv4 {
+		ipv = 4
+	}
+	/* Force IPv6 */
+	if *ipv6 {
+		/* Don't use both */
+		if 4 == ipv {
+			log.Printf("Unable to force both IPv4 and IPv6")
+			return -4
+		}
+		ipv = 6
+	}
+
+	/* Make sure key is the right length and make it a byte array */
+	if keyLen != len(*key) {
+		log.Printf("Key (%v) is %v bytes, but should be %v bytes",
+			strconv.QuoteToASCII(*key),
+			len(*key),
+			keyLen,
+		)
+	}
+	var keyb [keyLen]byte
+	for i := 0; i < keyLen; i++ {
+		keyb[i] = []byte(*key)[i]
+	}
 
 	/* Warn user if he's not root */
 	/* TODO: Update for systems in which 0 isn't root */
@@ -67,27 +111,37 @@ func mymain() int {
 	}
 	log.Printf("Tunnel device: %v", tunname)
 	/* Destroy the tun device when we're done with it */
-	defer func() { tun.Close(); destroy_tun(tunname) }()
+	defer func() { tun.Close() }()
 	/* Make or accept a connection */
-	peer, err := get_peer()
+	in, err := NewInsert(
+		*addr,
+		*connect,
+		ipv,
+		[]byte(*junk),
+		keyb,
+		*timeoff,
+		*insertName,
+		*insertNameLen,
+	)
 	if nil != err {
-		log.Printf("Error establishing connection to peer: %v", err)
+		log.Printf("Error establishing connection to insert: %v", err)
 		return -2
 	}
-	verbose("Connected to %v", peer.RemoteAddr())
-	/* Handshake with the peer */
-	if err := handshake(peer); nil != err {
-		log.Printf("Error handshaking: %v", err)
-		return -3
-	}
+	log.Printf("Connected to %v", in.RemoteAddr())
+
+	/* Channel on which to receive errors from the frame-copying
+	goroutines */
+	echan := make(chan error)
 
 	/* Fire off a goroutine to encrypt and send traffic */
+	go tx(tun, in, echan)
+
 	/* Fire off another to decrypt traffic and put it on the tun device */
-	/* Exit when appropriate */
+	/* TODO: Finish this */
+
+	/* Wait for an error */
+	err = <-echan
+	fmt.Printf("Fatal error: %v", err)
+
 	return 0
 }
-
-/* Handshake with the peer */
-
-//o, e := exec.Command("ifconfig").CombinedOutput() /* DEBUG */
-//log.Printf("(%v) %v", e, string(o)) /* DEBUG */

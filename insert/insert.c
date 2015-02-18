@@ -3,7 +3,7 @@
  * The remote half of thriftiness
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150213
+ * last modified 20150218
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -30,6 +30,7 @@
 #include "insert.h"
 #include "net.h"
 #include "retvals.h"
+#include "rx.h"
 
 /* Install name buffer, for comparisons */
 uint8_t installname[INSTALLNAMELEN];
@@ -47,9 +48,6 @@ int main(void) {
         char *endptr;
         int ret;
         int i;
-        if (-1 == setenv("FOO", "bar", 1)) { /* DEBUG */
-                printf("Setenv fail\n"); /* DEBUG */
-        } /* DEBUG */
 
         /* Work how long to sleep between connections */
         sleepsec = strtol(SLEEPSEC, &endptr, 0);
@@ -74,7 +72,9 @@ int main(void) {
 
         /* Initialize thread return integer and mutex */
         reterr = 0;
-        pthread_mutex_init(retmtx, NULL);
+        pthread_mutex_init(&retmtx, NULL);
+        /* TODO: Implement handshake timeout, or something like it */
+        /* TODO: Work out why handshake isn't working */
 
         /* Set up the stream to make randomish nonces */
         for (;;) {
@@ -96,6 +96,12 @@ int main(void) {
                         seterr(remfd);
                         goto TRYAGAIN;
                 }
+                /* Set send/receive timeouts */
+                if (0 > (ret = set_txrx_timeouts(remfd))) {
+                        close(remfd);
+                        seterr(ret);
+                        goto TRYAGAIN;
+                }
                 /* Attemp to handshake */
                 if (0 > (ret = handshake(remfd))) {
                         /* If it fails, close the connection, try again */
@@ -115,6 +121,7 @@ int main(void) {
 
 TRYAGAIN:
                 close(remfd);
+                printf("Sleeping\n"); /* DEBUG */
                 sleep(sleepsec);
                 sleep(4); /* DEBUG */
         }

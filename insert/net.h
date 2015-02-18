@@ -3,7 +3,7 @@
  * Defines and includes dealing with the network
  * by J. Stuart McMurray
  * created 20150118
- * last modified 201501126
+ * last modified 201501218
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -26,12 +26,15 @@
 #include "insert.h"
 
 /* Send/Receive timeout, in seconds */
-#define TXRXTO 2
+#define TXRXTO 30
 
 /* Wait for shift to connect.  Returns a value from retvals.h on failure. */
 int peer_wait(void);
 
 /* Connect to shift */
 int peer_call(void);
+
+/* Set send/receive timeouts on a socket */
+int set_txrx_timeouts(int fd);
 
 #endif /* HAVE_NET_H */

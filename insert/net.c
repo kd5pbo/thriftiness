@@ -3,7 +3,7 @@
  * Functions dealing with the network
  * by J. Stuart McMurray
  * created 20150118
- * last modified 20150204
+ * last modified 20150218
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -47,7 +47,7 @@ int peer_wait(void) {
         printf("In peer_wait()\n"); /* DEBUG */
         /* Set flags in hints to only give addresses on interfaces */
         hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICHOST | AI_NUMERICSERV |
-                AI_PASSIVE | AI_NUMERICSERV;
+                AI_PASSIVE;
         hints.ai_family = PF_UNSPEC; /* The address should provide this */
         hints.ai_socktype = SOCK_STREAM; /* TCP */
         hints.ai_protocol = IPPROTO_TCP; /* TCP */
@@ -148,4 +148,29 @@ int peer_call(void) {
                 return RET_ERR_CON;
         }
         return fd;
+}
+
+/* Set send/receive timeouts on a socket */
+int set_txrx_timeouts(int fd) {
+        struct timeval t;
+        socklen_t optlen;
+        /* Timeout after two seconds */
+        memset((void*)&t, 0, sizeof(t));
+        t.tv_sec = TXRXTO;
+        t.tv_usec = 0; /* Should be optimized out */
+        optlen = sizeof(t);
+
+        /* Set the timeouts */
+        if (-1 == setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, optlen)) {
+                printf("SSO TX ERR\n"); /* DEBUG */
+                return RET_ERR_STO;
+        }
+        if (-1 == setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, optlen)) {
+                printf("SSO RX ERR\n"); /* DEBUG */
+                return RET_ERR_STO;
+        }
+        memset(&t, 0, sizeof(t)); /* DEBUG */
+        if (-1 == getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, &optlen)) {printf("Cannot getsockopt.\n");}else{printf("t.tv_sec: %li\n", t.tv_usec);} /* DEBUG */
+        
+        return 0;
 }

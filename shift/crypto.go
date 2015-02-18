@@ -5,7 +5,7 @@ package main
  * Encrypt/decrypt functions
  * by J. Stuart McMurray
  * created 20150115
- * last modified 20150115
+ * last modified 20150217
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -24,63 +24,60 @@ package main
 
 import (
 	"crypto/cipher"
-	"flag"
 	"fmt"
 	"github.com/codahale/chacha20"
-	"time"
 )
 
-var (
-	key = flag.String("k", "012345678901234567890123456789AB",
-		"Encryption key.  Must be 32 bytes long.  May contain "+
-			"non-ascii characters.")
-	timeoff = flag.Int64("o", 0, "Time offset.  This number of seconds "+
-		"will be added to the current time to match the target's "+
-		"idea of the time.  May be negative.")
-
-	/* Encryption and decryption streams */
-	txStream cipher.Stream
-	rxStream cipher.Stream
+/* Number of bytes in the nonce */
+const (
+	nonceLen = chacha20.NonceSize
+	keyLen   = chacha20.KeySize
 )
 
-/* Generate the two crypt.Streams given the nonce sent by insert */
-func makeCryptors(nonce [nonceLen]byte) error {
-	timedNonce := make([]byte, 8)
-	/* Get the time */
-	var now int64 /* Just in case time.Unix()'s type changes */
-	now = time.Now().Unix() + *timeoff
+/* Our own idea of a Stream */
+type Cryptor struct {
+	cipher.Stream
+}
+
+/* Generate the two crypt.Streams given the key, the nonce sent by insert, and
+the time the nonce was received (give or take a pre-applied offset). */
+func NewCryptorPair(key [keyLen]byte, nonce [nonceLen]byte, when int64) (
+	stoi *Cryptor, /* Shift to Insert stream */
+	itos *Cryptor, /* Insert to Shift stream */
+	err error) {
 
 	/* Generate the time-adjusted nonce */
+	timedNonce := make([]byte, 8)
 	for i, n := range nonce {
 		/* Should never happen */
 		if 0 > i {
-			return fmt.Errorf("unpossible negative nonce index")
+			return nil, nil,
+				fmt.Errorf("unpossible negative nonce index")
 		}
-		timedNonce[i] = n ^ byte((now>>(8*uint(i)))&0xFF)
+		timedNonce[i] = n ^ byte((when>>(8*uint(i)))&0xFF)
 	}
 	debug("Time-adjusted nonce: %02X", timedNonce)
-	/* TODO: Make sure key is 32 bytes long early */
 
-	/* Make Streams */
-	var err error
+	/* Make the cryptors */
 	timedNonce[0] &= 0xFC
-	if txStream, err = chacha20.New([]byte(*key), timedNonce); nil != err {
-		return err
+	s, err := chacha20.New(key[:], timedNonce)
+	if nil != err {
+		return nil, nil, err
 	}
+	stoi = &Cryptor{s}
 	timedNonce[0] |= 0x03
-	if rxStream, err = chacha20.New([]byte(*key), timedNonce); nil != err {
-		return err
+	i, err := chacha20.New(key[:], timedNonce)
+	if nil != err {
+		return nil, nil, err
 	}
-
-	return nil
+	itos = &Cryptor{i}
+	/* TODO: Make sure key is 32 bytes long early */
+	return
 }
 
-/* Encrypt data in-place with txStream */
-func encrypt(d []byte) {
-	txStream.XORKeyStream(d, d)
-}
-
-/* Decrypt data in-place with rxStream */
-func decrypt(d []byte) {
-	rxStream.XORKeyStream(d, d)
+/* Encrypt/Decrypt data */
+func (c *Cryptor) Crypt(d []byte) []byte {
+	o := make([]byte, len(d))
+	c.XORKeyStream(o, d)
+	return o
 }

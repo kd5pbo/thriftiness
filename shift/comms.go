@@ -5,7 +5,7 @@ package main
  * Functions to communicate with insert
  * by J. Stuart McMurray
  * created 20150115
- * last modified 20150204
+ * last modified 20150217
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -24,82 +24,130 @@ package main
 
 import (
 	"crypto/subtle"
-	"flag"
 	"fmt"
 	"net"
 	"strconv"
+	"sync"
+	"time"
 )
 
-var (
-	insertName = flag.String("name", "0001", "Name set in insert to "+
-		"deter replay attacks")
-	insertNameLen = flag.Uint("nlen", 1024, "Length of data to send "+
-		"with -name, including size of -name.")
-	junk = flag.String("junk", "GET / HTTP/1.1\r\n",
-		"Junk data in handshake")
-)
-
-/* Number of bytes in the nonce */
-const nonceLen = 8
-
-/* Get a connection with the peer */
-func get_peer() (net.Conn, error) {
-	/* Make sure we are only supposed to listen xor connect */
-	if *listen && *connect {
-		return nil, fmt.Errorf("Unable to both listen and connect.")
-	}
-	/* Get IP versin */
-	tcp := "tcp"
-	switch {
-	case *ipv4 && *ipv6:
-		return nil, fmt.Errorf("Both -4 and -6 were given but at " +
-			"most one is allowed")
-	case *ipv4:
-		tcp = "tcp4"
-	case *ipv6:
-		tcp = "tcp6"
-	}
-	/* He he, goto */
-	if *connect {
-		goto CONNECT
-	}
-	/* Try to listen on the port */
-	if l, err := net.Listen(tcp, *addr); nil != err {
-		return nil, err
-	} else {
-		return l.Accept()
-	}
-CONNECT:
-	/* Try to connect to the client */
-	return net.Dial(tcp, *addr)
+/* Insert represents a connection to insert */
+type Insert struct {
+	c   net.Conn   /* Connection to Insert */
+	sic *Cryptor   /* Shift to Insert Cryptor */
+	sim sync.Mutex /* Shift to Insert Send Lock */
+	isc *Cryptor   /* Insert to Shift Cryptor */
+	ism sync.Mutex /* Insert to Shift Receive Lock */
 }
 
-/* Handshake with insert.  Returns the nonce value sent by insert. */
-func handshake(c net.Conn) error {
-	/* Say Hello */
-	debug("Sending %v bytes of junk: %v",
-		len(*junk), strconv.QuoteToASCII(*junk))
-	if err := sendAll(c, []byte(*junk)); nil != err {
-		return err
-	}
-	/* Get the nonce */
-	nonce, err := recvAll(c, nonceLen)
-	if nil != err {
-		return err
-	}
-	debug("Nonce is %02X\n", nonce)
+/* Connect to Insert at addr (or optionally listening on addr if listen is
+true),  forcing IPv4 if force is 4, IPv6 is force is 6, or maintaining the
+default is force is 0, and handshake using the given junk, key, time offset,
+and name.  The returned Insert will be ready for two-way communications. */
+func NewInsert(
+	addr string, /* Connect/listen address */
+	connect bool, /* True to connect, false to listen */
+	force int, /* Fore 4 for IPv4, 6 for IPv6, 0 for no forcing */
+	junk []byte, /* Initial junk to send */
+	key [keyLen]byte, /* Encryption key */
+	offset int64, /* Time offset in seconds */
+	name string, /* Insert's install name */
+	nLen uint, /* Length of chunk of data in which to put name */
+) (*Insert, error) {
+	/* Struct to return */
+	in := &Insert{}
 
-	/* Initialize crypto */
-	var nonceArr [nonceLen]byte
-	for i, v := range nonce {
-		nonceArr[i] = v
+	/* Work out whether to force IPv4 or IPv6 */
+	tnet := "tcp"
+	switch force {
+	case 0:
+		break
+	case 4:
+		tnet = "tcp4"
+	case 6:
+		tnet = "tcp6"
+	default:
+		return nil, fmt.Errorf("cannot is no IPv%v as it doesn't "+
+			"exist", force)
 	}
-	makeCryptors(nonceArr)
+
+	/* Make sure the address is a valid address */
+	tcpAddr, err := net.ResolveTCPAddr(tnet, addr)
+	if nil != err {
+		return nil, fmt.Errorf("resolving %v: %v", err)
+	}
+
+	/* Try to connect to Insert */
+	c, err := makeConnection(tnet, tcpAddr, connect)
+	if nil != err {
+		return nil, err
+	}
+	in.c = c
+
+	/* Send Junk */
+	debug("Sending %v bytes of junk: %v",
+		len(junk), strconv.QuoteToASCII(string(junk)))
+	if err := in.sendAll(junk); nil != err {
+		return nil, err
+	}
+
+	/* Get the Nonce */
+	nonce, err := in.recvAll(nonceLen)
+	if nil != err {
+		return nil, err
+	}
+	nonceTime := time.Now().Unix()
+	debug("Got nonce %02X at time %v", nonce, nonceTime)
+
+	/* Make the nonce an array */
+	var narr [nonceLen]byte
+	for i := 0; i < nonceLen; i++ {
+		narr[i] = nonce[i]
+	}
+
+	/* Make the cryptors */
+	in.sic, in.isc, err = NewCryptorPair(key, narr, nonceTime)
+	if nil != err {
+		return nil, err
+	}
+
+	/* Exchange names */
+	if err := in.exchangeNames(name, nLen); nil != err {
+		return nil, err
+	}
+
+	/* Return the insert struct */
+	return in, nil
+}
+
+/* Make a connection with the peer */
+func makeConnection(tnet string,
+	addr *net.TCPAddr,
+	connect bool) (net.Conn, error) {
+	/* Listen or connect, as appropriate */
+	if connect {
+		/* Try to connect to the client */
+		debug("Attempting a %v connection to %v", tnet, addr)
+		return net.DialTCP(tnet, nil, addr)
+	}
+	/* Try to listen on the port */
+	debug("Listening on %v address %v", tnet, addr)
+	l, err := net.ListenTCP(tnet, addr)
+	if nil != err {
+		return nil, err
+	}
+	/* Get a connection */
+	return l.Accept()
+}
+
+/* Send/Receive the name with which insert was installed.  Closes the
+connection on error. */
+func (in *Insert) exchangeNames(name string, nlen uint) error {
 
 	/* Null-pad our name out to insertNameLen bytes */
-	txnamelong := []byte(*insertName)
+	txnamelong := []byte(name)
 	txnamelong = append(txnamelong, make([]byte,
-		*insertNameLen-uint(len(txnamelong)))...)
+		nlen-uint(len(txnamelong)))...)
 
 	/* Work out how many null-padded bytes there are */
 	txnameshort, txnulls := trimTrailingNulls(txnamelong)
@@ -107,15 +155,14 @@ func handshake(c net.Conn) error {
 	/* Send our idea of the name */
 	debug("Sending name %v with %v trailing null bytes",
 		strconv.QuoteToASCII(string(txnameshort)), txnulls)
-	if err := sendEnc(c, txnamelong); nil != err {
+	if err := in.SendEnc(txnamelong); nil != err {
 		return fmt.Errorf("sending name: %v", err)
 	}
 	verbose("Sent name: %v", strconv.QuoteToASCII(string(txnameshort)))
 
 	/* Get (hopefully) the same name back */
-	debug("Waiting on insert to send name back in %v byte message",
-		*insertNameLen)
-	rxnamelong, err := recvEnc(c, int(*insertNameLen))
+	debug("Waiting on insert to send name back in %v byte message", nlen)
+	rxnamelong, err := in.RecvEnc(nlen)
 	if nil != err {
 		return fmt.Errorf("receiving name: %v", err)
 	}
@@ -134,18 +181,23 @@ func handshake(c net.Conn) error {
 	return nil
 }
 
-/* Send all the bytes to a conn */
-func sendAll(c net.Conn, b []byte) error {
+/* Send all the bytes to insert */
+func (in *Insert) sendAll(b []byte) error {
 	/* Number of bytes to send */
 	tosend := len(b)
 	/* Number of bytes sent so far */
 	sent := 0
 
+	/* Prevent interleaved sends */
+	in.sim.Lock()
+	defer in.sim.Unlock()
+
 	/* Go until we've not got any more */
 	for sent < tosend {
 		/* Try to send the remaining bytes */
-		n, err := c.Write(b[sent:])
+		n, err := in.c.Write(b[sent:])
 		if nil != err {
+			in.c.Close()
 			return err
 		}
 		sent += n
@@ -153,48 +205,63 @@ func sendAll(c net.Conn, b []byte) error {
 	return nil
 }
 
-/* Read n bytes from the conn */
-func recvAll(c net.Conn, n int) ([]byte, error) {
-	nRead := 0      /* Number of bytes sent */
-	buf := []byte{} /* Output buffer */
+/* Read n bytes from Insert */
+func (in *Insert) recvAll(n uint) ([]byte, error) {
+	nRead := uint(0) /* Number of bytes sent */
+	buf := []byte{}  /* Output buffer */
+	fmt.Printf("Got a request for %v bytes\n", n)
+
+	/* Prevent interleaved receives */
+	in.ism.Lock()
+	defer in.ism.Unlock()
 
 	/* Keep trying until we've sent enough */
 	for nRead < n {
-		/* Make a read buffer with the remaining number of bytes */
 		b := make([]byte, n-nRead)
 		/* Try to fill it */
-		r, err := c.Read(b)
+		r, err := in.c.Read(b)
 		if nil != err {
+			in.c.Close()
 			return nil, err
 		}
 		/* Update count and buffer */
 		buf = append(buf, b...)
-		nRead += r
+		if 0 < r {
+			nRead += uint(r)
+		}
 	}
 	return buf, nil
 }
 
-/* Encrypt and send b to c */
-func sendEnc(c net.Conn, b []byte) error {
+/* Encrypt and send b to Insert */
+func (in *Insert) SendEnc(b []byte) error {
 	/* Copy b into a local buffer */
 	ebuf := make([]byte, len(b))
 	copy(ebuf, b)
-	/* Encrypt data */
-	encrypt(ebuf)
-	/* Send it */
-	return sendAll(c, ebuf)
+	/* Encrypt data and Send it */
+	return in.sendAll(in.encrypt(ebuf))
 }
 
-/* Read and decrypt n bytes from c */
-func recvEnc(c net.Conn, n int) ([]byte, error) {
+/* Read and decrypt n bytes from Insert */
+func (in *Insert) RecvEnc(n uint) ([]byte, error) {
 	/* Get n bytes */
-	b, err := recvAll(c, n)
+	b, err := in.recvAll(n)
 	if nil != err {
 		return nil, err
 	}
-	/* Decrypt them */
-	decrypt(b)
-	return b, nil
+	p := in.decrypt(b)
+
+	return p, nil
+}
+
+/* Encrypt data for sending */
+func (in *Insert) encrypt(d []byte) []byte {
+	return in.sic.Crypt(d)
+}
+
+/* Decrypt data for receiving */
+func (in *Insert) decrypt(d []byte) []byte {
+	return in.isc.Crypt(d)
 }
 
 /* Trim the null bytes from the end of a byte slice, return a trimmed copy and
@@ -220,4 +287,9 @@ func trimTrailingNulls(b []byte) ([]byte, int) {
 	}
 
 	return trimmed, nulls
+}
+
+/* Wrapper for the connection's RemoteAddr */
+func (in *Insert) RemoteAddr() net.Addr {
+	return in.c.RemoteAddr()
 }
