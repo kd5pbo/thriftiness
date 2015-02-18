@@ -3,7 +3,7 @@
  * Code to receive data from insert
  * by J. Stuart McMurray
  * created 20150212
- * last modified 20150212
+ * last modified 20150218
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -59,6 +59,7 @@ void shift_to_insert(int fd, pcap_t *p) {
 
                 /* Convert to host format */
                 sizeh = htons(sizen);
+                printf("Rexpecting 0x%hX bytes\n", sizeh); /* DEBUG */
 
                 /* Read that many bytes of data */
                 if (0 != (ret = recv_enc(fd, buf, sizeh))) {
@@ -89,7 +90,9 @@ void shift_to_insert(int fd, pcap_t *p) {
         /* If we're here, something failed (or shift disconnected) */
         set_reterr(ret);
         close(fd);
-        pcap_close(p);
+        if (NULL != p) {
+                pcap_close(p);
+        }
 }
 
 

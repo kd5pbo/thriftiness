@@ -3,7 +3,7 @@
  * Code to receive data from insert
  * by J. Stuart McMurray
  * created 20150212
- * last modified 20150212
+ * last modified 20150215
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -23,6 +23,8 @@
 
 #ifndef HAVE_RX_H
 #define HAVE_RX_H
+
+#include <pcap.h>
 
 /* Get data from shift (as fd) and put it on the wire. */
 void shift_to_insert(int fd, pcap_t *p);
