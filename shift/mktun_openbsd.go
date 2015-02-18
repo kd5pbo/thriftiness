@@ -5,7 +5,7 @@ package main
  * OpenBSD-specific source to make the tun(4) device
  * by J. Stuart McMurray
  * created 20150116
- * last modified 20150214
+ * last modified 20150218
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -25,12 +25,15 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
+/* Flags speficic to openbsd */
 var (
 	mac = flag.String("mac", "", "MAC address to use for tun(4) "+
 		"device.  If none is specified, none will be set, and "+
@@ -41,12 +44,12 @@ var (
 		"DHCP).")
 	netmask = flag.String("nm", "", "Netmask.  Will only be set if an "+
 		"IP address is specified.")
-	mtu = flag.UInt("mtu", 1500, "MTU.  If 0 is specified, the default "+
+	mtu = flag.Int("mtu", 1500, "MTU.  If 0 is specified, the default "+
 		"will be used.")
 )
 
 const (
-	MTUWARN = 2 * *14 /* Expected MTU limit */
+	MTUWARN = 1 << 14 /* Expected MTU limit */
 )
 
 /* Struct representing a tunnel.  Implements the Tunnel interface */
@@ -55,7 +58,7 @@ type TunOpenBSD struct {
 }
 
 /* Read and return a frame from the kernel */
-func (t *TunOpenBSD) Read() ([]byte, error) {
+func (t *TunOpenBSD) Read() (Frame, error) {
 	/* Read buffer.  We should never fill this */
 	buf := make([]byte, 2*MTUWARN)
 	/* Block until we have data */
@@ -65,15 +68,16 @@ func (t *TunOpenBSD) Read() ([]byte, error) {
 	}
 	/* If we read more than MTUWARN bytes, something's buggy */
 	if n > MTUWARN {
-		return nil, fmt.Errorf("read a %v-byte ethernet frame from %v.  This is "+
-			"way too big and likely indicates a bug.", n)
+		return nil, fmt.Errorf("read a %v-byte ethernet frame from "+
+			"%v.  This is way too big and likely indicates a bug.",
+			n)
 	}
 	/* Give back the read bytes */
 	return buf[:n], nil
 }
 
 /* Write a frame to the kernel */
-func (t *TunOpenBSD) Write(b []byte) error {
+func (t *TunOpenBSD) Write(b Frame) error {
 	/* Send the frame to the kernel */
 	n, err := t.f.Write(b)
 	if nil != err {
@@ -101,6 +105,11 @@ func MakeTun() (*TunOpenBSD, string, error) {
 	if "" != *ip && !regexp.MustCompile(`^[0-9A-Fa-f:]{2,39}|`+
 		`\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$`).MatchString(*ip) {
 		return nil, "", fmt.Errorf("Invalid IP address: %v", *ip)
+	}
+
+	/* Make sure MTU is > 0 */
+	if 0 >= *mtu {
+		return nil, "", fmt.Errorf("mtu must be greater than zero.")
 	}
 
 	/* Try successive device numbers until one works */
@@ -152,8 +161,11 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		}
 		/* Set the netmask if it's given */
 		if "" != *netmask {
-			if err := exec.Command("/sbin/ifconfig", devname,
-				"netmask", *netmask); nil != err {
+			output, err := exec.Command("/sbin/ifconfig",
+				devname,
+				"netmask",
+				*netmask).CombinedOutput()
+			if nil != err {
 				return nil, "", fmt.Errorf("setting netmask "+
 					"(%v): %v (output %v)",
 					*netmask, err,
@@ -171,12 +183,26 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		return nil, "", fmt.Errorf("MTU (%v) less than 0", *mtu)
 	}
 	if 0 != *mtu {
-		if output, err := exec.Command("/sbin/ifconfig", devname,
-			"mtu", strconv.Itoa(*mtu)); nil != err {
+		if output, err := exec.Command(
+			"/sbin/ifconfig",
+			devname,
+			"mtu",
+			strconv.Itoa(*mtu),
+		).CombinedOutput(); nil != err {
 			return nil, "", fmt.Errorf("setting mtu (%v): %v "+
 				"(output %v)",
 				*mtu, err, strings.TrimSpace(string(output)))
 		}
+	}
+
+	/* Bring the interface up */
+	if output, err := exec.Command(
+		"/sbin/ifconfig",
+		devname,
+		"up",
+	).CombinedOutput(); nil != err {
+		return nil, "", fmt.Errorf("Bringing %v up: %v (output %v)",
+			devname, err, output)
 	}
 	return &TunOpenBSD{f: t}, devname, nil
 }
