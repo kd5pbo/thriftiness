@@ -29,8 +29,9 @@ type Frame []byte
 provide a function of type MakeTunFunc. */
 type Tunnel interface {
 	Read() (Frame, error) /* Read the next frame from the tunnel */
-	Write(Frame, error)   /* Write a frame to the tunnel */
-	Close()               /* Close the tunnel */
+	Write(Frame) error    /* Write a frame to the tunnel */
+	Close() error         /* Close the tunnel */
+	MaxFrameLen() uint    /* Maximum frame size */
 }
 
 /* MakeTunFunc serves to document the type of the MakeTun function in each of
