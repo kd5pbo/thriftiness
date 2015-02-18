@@ -89,6 +89,13 @@ func (t *TunOpenBSD) Write(b Frame) error {
 /* Close the tunnel */
 func (t *TunOpenBSD) Close() error {
 	return t.f.Close()
+
+	if output, err := exec.Command("/sbin/ifconfig", devname,
+		"destroy").CombinedOutput(); nil != err {
+		debug("Unable to destroy %v: %v (output %v)",
+			devname, err, strings.TrimSpace(string(output)))
+	}
+	debug("Destroyed %v", devname)
 }
 
 /* Make and open a tun(4) device. */
@@ -148,9 +155,6 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		}
 	}
 
-	//o, e := exec.Command("ifconfig").CombinedOutput() /* DEBUG */
-	//log.Printf("(%v) %v", e, string(o)) /* DEBUG */
-
 	/* Set the IP address if one is given */
 	if "" != *ip {
 		if output, err := exec.Command("/sbin/ifconfig", devname,
@@ -205,14 +209,4 @@ func MakeTun() (*TunOpenBSD, string, error) {
 			devname, err, output)
 	}
 	return &TunOpenBSD{f: t}, devname, nil
-}
-
-/* Destroy the tunnel */
-func destroy_tun(devname string) {
-	if output, err := exec.Command("/sbin/ifconfig", devname,
-		"destroy").CombinedOutput(); nil != err {
-		debug("Unable to destroy %v: %v (output %v)",
-			devname, err, strings.TrimSpace(string(output)))
-	}
-	debug("Destroyed %v", devname)
 }
