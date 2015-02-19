@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math"
 )
 
 /*
@@ -26,9 +28,9 @@ import (
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-/* Reads from the tun device and sends the data to insert. errors will be
+/* Reads from the tun device and sends the data to insert. fatal errors will be
 reported on echan.  The goroutine will terminate when dchan is closed. */
-func tx(tun Tunnel, insert *Insert, echan chan error) {
+func tx(tun Tunnel, in *Insert, echan chan error) {
 	for {
 		/* Read a frame from the tun device */
 		fmt.Printf("Waiting on a frame.\n")
@@ -37,8 +39,32 @@ func tx(tun Tunnel, insert *Insert, echan chan error) {
 			echan <- err
 			return
 		}
-		/* Drop frames that are too big */
+		/* Drop frames that are bigger than the tunnel can handle */
+		if tun.MaxFrameLen() < len(f) {
+			log.Printf(
+				"Dropping frame of length %v > %v",
+				len(f),
+				tun.MaxFrameLen(),
+			)
+			continue
+		}
+		/* Drop frames that are bigger than the protocol can handle */
+		if math.MaxUint16 < len(f) {
+			log.Printf(
+				"Dropping %v-byte frame that is bigger than "+
+					"the protocol's max %v bytes.",
+				len(f),
+				math.MaxUint16,
+			)
+			continue
+		}
 		/* Send frame to insert */
 		fmt.Printf("Frame (%v): %02X\n", len(f), f) /* DEBUG */
+		mf, err := f.Marshall()
+		if nil != err { /* Shouldn't happen */
+			log.Printf("Marshall error: %v", err)
+			continue
+		}
+		in.SendEnc(mf)
 	}
 }

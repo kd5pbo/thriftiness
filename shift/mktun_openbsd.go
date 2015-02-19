@@ -216,6 +216,6 @@ func MakeTun() (*TunOpenBSD, string, error) {
 }
 
 /* Report the maximum frame length */
-func (t *TunOpenBSD) MaxFrameLen() uint {
-	return uint(*mtu)
+func (t *TunOpenBSD) MaxFrameLen() int {
+	return *mtu
 }

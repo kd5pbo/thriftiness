@@ -1,5 +1,12 @@
 package main
 
+import (
+	"crypto/sha256"
+	"encoding/binary"
+	"fmt"
+	"math"
+)
+
 /*
  * tun.go
  * Interface describing a tunnel
@@ -31,7 +38,7 @@ type Tunnel interface {
 	Read() (Frame, error) /* Read the next frame from the tunnel */
 	Write(Frame) error    /* Write a frame to the tunnel */
 	Close() error         /* Close the tunnel */
-	MaxFrameLen() uint    /* Maximum frame size */
+	MaxFrameLen() int     /* Maximum frame size */
 }
 
 /* MakeTunFunc serves to document the type of the MakeTun function in each of
@@ -39,3 +46,39 @@ the mktun_* source files.  The returned value should be a struct that satisfies
 the Tunnel interface, a string describing the tunnel, such as "tun0" or "tap2",
 and the customary error-or-nil */
 type MakeTunFunc func() (Tunnel, string, error)
+
+var (
+	ErrorMarshallTooLong = fmt.Errorf(
+		"frame too long for protocol's max %v bytes",
+		math.MaxUint16,
+	)
+)
+
+/* Marshall returns a byte slyce resulting from prepending the Frame with the
+frame's size, and appending the appropriate hash. */
+func (f Frame) Marshall() ([]byte, error) {
+	/* Get the length of the frame */
+	l := len(f)
+	if l > math.MaxUint16 {
+		return nil, ErrorMarshallTooLong
+	}
+
+	/* Header, which is just the size of the data in two bytes */
+	hdr := make([]byte, 2)
+	binary.BigEndian.PutUint16(hdr, uint16(l))
+
+	/* Payload, sans checksum */
+	payload := append(hdr, f...)
+
+	/* Append hash */
+	hashA := sha256.Sum224(payload)
+	fmt.Printf("TX Hash: %02X\n", hashA) /* DEBUG */
+	hashS := make([]byte, len(hashA))
+	for i := 0; i < len(hashA); i++ {
+		hashS[i] = hashA[i]
+	}
+	payload = append(payload, hashS...)
+
+	/* Return payload */
+	return payload, nil
+}
