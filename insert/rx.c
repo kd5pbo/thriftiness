@@ -3,7 +3,7 @@
  * Code to receive data from insert
  * by J. Stuart McMurray
  * created 20150212
- * last modified 20150218
+ * last modified 20150222
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -62,7 +62,7 @@ void shift_to_insert(int fd, pcap_t *p) {
                 if (0 != (ret = recv_enc(fd, buf+sizeof(sizeh), sizeh))) {
                         break;
                 }
-                printf("RX Frame: ");for(i = 0; i < sizeh;++i){printf("%02X", buf[i]);}printf("\n"); /* DEBUG */
+                printf("RX Frame: ");for(i = sizeof(sizeh); i < sizeh+sizeof(sizeh);++i){printf("%02X", buf[i]);}printf("\n"); /* DEBUG */
 
                 /* Read the hash, as sent by shift */
                 if (0 != (ret = recv_enc(fd, rxhash, DIGESTLEN))) {
@@ -83,21 +83,15 @@ void shift_to_insert(int fd, pcap_t *p) {
                         break;
                 }
 
-                /* print the data DEBUG */
-                for (i = sizeof(sizeh); i < sizeh; ++i) {
-                        printf("%02" PRIX8, buf[i]);/* DEBUG */
-                }printf("\n"); /* DEBUG */
+                /* Send it out on the wire */
+                if ((ret = pcap_inject(p, buf+sizeof(sizeh), sizeh)) !=
+                                sizeh) {
+                        printf("Only injected %i/%i bytes\n", ret, sizeh);
+                }
         }
+        /* TODO: Handle the interface going down */
+        /* TODO: Break from the pcap read loop */
         
         /* If we're here, something failed (or shift disconnected) */
         set_reterr(ret);
-        close(fd);
-        if (NULL != p) {
-                pcap_close(p);
-        }
 }
-
-
-
-
-

@@ -61,12 +61,14 @@ func NewCryptorPair(key [keyLen]byte, nonce [nonceLen]byte, when int64) (
 	/* Make the cryptors */
 	timedNonce[0] &= 0xFC
 	s, err := chacha20.New(key[:], timedNonce)
+	fmt.Printf("SIN: %02X\n", timedNonce) /* DEBUG */
 	if nil != err {
 		return nil, nil, err
 	}
 	stoi = &Cryptor{s}
 	timedNonce[0] |= 0x03
 	i, err := chacha20.New(key[:], timedNonce)
+	fmt.Printf("ISN: %02X\n", timedNonce) /* DEBUG */
 	if nil != err {
 		return nil, nil, err
 	}

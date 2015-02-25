@@ -3,7 +3,7 @@
  * Return values for insert.c
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150218
+ * last modified 20150222
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -51,5 +51,11 @@
 #define RET_ERR_SIN   -21 /* Error sending the install name */
 #define RET_ERR_HASH  -22 /* Received and computed hash values differed */
 #define RET_DISCON    -23 /* Shift disconnected */
+#define RET_ERR_PINIT -24 /* Pcap init failed */
+#define RET_ERR_BFC   -26 /* Error compiling BPF filter */
+#define RET_ERR_BFS   -27 /* Error setting PBF filter */
+#define RET_ERR_CSZS  -28 /* Captured packet size too small */
+#define RET_ERR_CSZL  -29 /* Captured packet size too large */
+#define RET_ERR_CAP   -30 /* Error sniffing packets */
 
 #endif /* #ifndef HAVE_RETVALS_H */

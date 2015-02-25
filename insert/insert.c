@@ -3,7 +3,7 @@
  * The remote half of thriftiness
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150218
+ * last modified 20150222
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -20,17 +20,20 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <pcap.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+#include "cap.h"
 #include "comm.h"
 #include "insert.h"
 #include "net.h"
 #include "retvals.h"
 #include "rx.h"
+#include "tx.h"
 
 /* Install name buffer, for comparisons */
 uint8_t installname[INSTALLNAMELEN];
@@ -48,6 +51,9 @@ int main(void) {
         char *endptr;
         int ret;
         int i;
+        pcap_t *p;      /* Pcap handle */
+        pthread_t itos; /* Thread to sniff packets and send them to shift */
+        struct its_data itos_data; /* Data for insert_to_shift */
 
         /* Work how long to sleep between connections */
         sleepsec = strtol(SLEEPSEC, &endptr, 0);
@@ -70,14 +76,13 @@ int main(void) {
         memset(key, 0, sizeof(key));
         memcpy(key, KEY, sizeof(key));
 
-        /* Initialize thread return integer and mutex */
-        reterr = 0;
+        /* Initialize thread return mutex */
         pthread_mutex_init(&retmtx, NULL);
-        /* TODO: Implement handshake timeout, or something like it */
-        /* TODO: Work out why handshake isn't working */
 
         /* Set up the stream to make randomish nonces */
+        ret = 0;
         for (;;) {
+                reterr = 0;
                 /* Clear the error variable */
                 unsetenv(ERRVAR);
 
@@ -93,33 +98,50 @@ int main(void) {
                 }
                 /* Note any errors connecting or waiting, try again or die. */
                 if (0 > remfd) {
-                        seterr(remfd);
                         goto TRYAGAIN;
                 }
                 /* Set send/receive timeouts */
                 if (0 > (ret = set_txrx_timeouts(remfd))) {
-                        close(remfd);
-                        seterr(ret);
                         goto TRYAGAIN;
                 }
                 /* Attemp to handshake */
                 if (0 > (ret = handshake(remfd))) {
                         /* If it fails, close the connection, try again */
-                        close(remfd);
-                        seterr(ret);
                         goto TRYAGAIN;
                 }
 
-                /* TODO: Start pcap going */
-                /* TODO: Start pthread to receive data from pcap and send to shift */
-                /* TODO: Call function to receive data from shift and put it on the network */
-                shift_to_insert(remfd, NULL);
+                /* Start pcap going */
+                p = NULL;
+                if (0 > (ret = pcap_setup(&p))) {
+                        goto TRYAGAIN;
+                }
 
-                /* TODO: Wait for insert->shift thread to end */
-                /* TODO: seterr(reterr) */
-                /* TODO: Implement set_reterr */
+                /* Start pthread to receive data from pcap and send to shift */
+                memset(&itos, 0, sizeof(itos));
+                memset(&itos_data, 0, sizeof(itos_data));
+                itos_data.fd = remfd;
+                itos_data.p = p;
+                pthread_create(&itos, NULL, insert_to_shift, &itos_data);
+                /* Receive data from shift and put it on the network */
+                shift_to_insert(remfd, p);
+                /* When it's done, cancel the insert-to-shift comms */
+                pthread_cancel(itos);
 
+                /* Wait for insert->shift thread to end */
+                pthread_join(itos, NULL);
+                /* Set the error returned by one of the threads */
+                if (0 != reterr) {
+                        seterr(reterr);
+                }
 TRYAGAIN:
+                /* Set the error code if it's nonzero */
+                if (0 != ret) {
+                        printf("Error code is %i\n", ret); /* DEBUG */
+                        seterr(ret);
+                }
+                if (NULL != p) {
+                        pcap_close(p);
+                }
                 close(remfd);
                 printf("Sleeping\n"); /* DEBUG */
                 sleep(sleepsec);

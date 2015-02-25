@@ -82,7 +82,7 @@ func (t *TunOpenBSD) Write(b Frame) error {
 	/* Send the frame to the kernel */
 	n, err := t.f.Write(b)
 	if nil != err {
-		return fmt.Errorf("only wrote %v/%v bytes: %v", n, len(b))
+		return fmt.Errorf("only wrote %v/%v bytes: %v", n, len(b), err)
 	}
 	return nil
 }
@@ -129,8 +129,11 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		devname = fmt.Sprintf("tun%v", i)
 		/* Try to open a tun device */
 		var err error
-		if t, err = os.Open(fmt.Sprintf("/dev/%v", devname)); nil !=
-			err {
+		if t, err = os.OpenFile(
+			fmt.Sprintf("/dev/%v", devname),
+			os.O_RDWR|os.O_CREATE|os.O_SYNC,
+			0600,
+		); nil != err {
 			debug("Unable to open %v: %v", devname, err)
 			continue
 		}
@@ -212,7 +215,13 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		return nil, "", fmt.Errorf("Bringing %v up: %v (output %v)",
 			devname, err, output)
 	}
-	return &TunOpenBSD{f: t, devname: devname}, devname, nil
+	tun := &TunOpenBSD{f: t, devname: devname}
+	//if n, err := t.Write([]byte("foo")); nil != err { /* DEBUG */
+	//	fmt.Printf("Error on initial write: %v\n", err) /* DEBUG */
+	//} else { /* DEBUG */
+	//	fmt.Printf("Initial %v-byte write succeeded.\n", n) /* DEBUG */
+	//} /* DEBUG */
+	return tun, devname, nil
 }
 
 /* Report the maximum frame length */

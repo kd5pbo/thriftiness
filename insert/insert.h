@@ -3,7 +3,7 @@
  * Defines and such for insert
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150213
+ * last modified 20150220
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -76,6 +76,15 @@
 /* The maximum size of JUNKSIZE.  This is the amount of memory allocated to
  * read junk during the handshake (though only JUNKSIZE bytes will be read). */
 #define MAXJUNKSIZE 1024
+/* The interface attached to the network to shift into, right-padded with null
+ * bytes and ending in n (for nic). */
+#define PCAPINT "em0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0c"
+/* The capture filter.  This can be a null string (great for sniffing), or 
+ * nearly any other BPF filter.  Padded on the right with nulls, and ends in a
+ * f.  NB: 'ip broadcast' probably won't work. */
+/* Number of bytes per frame */
+#define PCAPFILT "arp or host 192.168.111.9\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0f"
+#define SNAPLEN 65535 /* Max size for two bytes */
 
 /*******************************************
  * Nothing below here is user-configurable *

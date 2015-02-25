@@ -1,11 +1,5 @@
 package main
 
-import (
-	"fmt"
-	"log"
-	"math"
-)
-
 /*
  * tx.go
  * Goroutine to send data to insert
@@ -27,6 +21,12 @@ import (
  * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
+
+import (
+	"fmt"
+	"log"
+	"math"
+)
 
 /* Reads from the tun device and sends the data to insert. fatal errors will be
 reported on echan.  The goroutine will terminate when dchan is closed. */
@@ -58,13 +58,18 @@ func tx(tun Tunnel, in *Insert, echan chan error) {
 			)
 			continue
 		}
-		/* Send frame to insert */
-		fmt.Printf("Frame (%v): %02X\n", len(f), f) /* DEBUG */
+		/* Marshall a nice message */
 		mf, err := f.Marshall()
 		if nil != err { /* Shouldn't happen */
 			log.Printf("Marshall error: %v", err)
 			continue
 		}
-		in.SendEnc(mf)
+		fmt.Printf("Snd: %02X\n", f)
+		/* Send frame to insert */
+		if err := in.SendEnc(mf); nil != err {
+			echan <- err
+			return
+		}
+
 	}
 }

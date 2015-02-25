@@ -131,17 +131,17 @@ func mymain() int {
 
 	/* Channel on which to receive errors from the frame-copying
 	goroutines */
-	echan := make(chan error)
+	echan := make(chan error, 1)
 
 	/* Fire off a goroutine to encrypt and send traffic */
 	go tx(tun, in, echan)
 
 	/* Fire off another to decrypt traffic and put it on the tun device */
-	/* TODO: Finish this */
+	go rx(tun, in, echan)
 
 	/* Wait for an error */
 	err = <-echan
-	fmt.Printf("Fatal error: %v", err)
+	fmt.Printf("Fatal error: %v\n", err)
 
 	return 0
 }

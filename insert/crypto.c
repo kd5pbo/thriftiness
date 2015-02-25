@@ -3,7 +3,7 @@
  * Functions related to encryption/decryption
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150213
+ * last modified 20150221
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -20,6 +20,7 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
+#include <inttypes.h> /* DEBUG */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -131,6 +132,8 @@ void streams_init(uint8_t nonce[8]) {
 
         /* Get the current time */
         now = time(NULL);
+        printf("Time is %0" PRIi64 "\n", now);
+
 
         /* Make it 8 bytes */
         now8 = 0x000000000000 | now;

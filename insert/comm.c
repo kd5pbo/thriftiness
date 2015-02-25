@@ -83,10 +83,13 @@ int handshake(fd) {
         if (0 != recv_enc(fd, rxname, INSTALLNAMELEN)) {
                 return RET_ERR_RIN;
         }
-        printf("Got install name:\n\t%s\n", rxname);
+        if (10 > strnlen(rxname, 20)) { /* DEBUG */
+                printf("Got install name: %s\n", rxname); /* DEBUG */
+        } /* DEBUG */
 
         /* Make sure it's what we expect */
         if (0 != (ret = constcmp(rxname, installname, INSTALLNAMELEN))) {
+                printf("The install name is wrong!\n");
                 return RET_INV_RIN;
         }
 

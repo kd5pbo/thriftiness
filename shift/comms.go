@@ -96,8 +96,8 @@ func NewInsert(
 	if nil != err {
 		return nil, err
 	}
-	nonceTime := time.Now().Unix()
-	debug("Got nonce %02X at time %v", nonce, nonceTime)
+	nonceTime := time.Now().Unix() + offset
+	debug("Got nonce %02X for target time %v", nonce, nonceTime)
 
 	/* Make the nonce an array */
 	var narr [nonceLen]byte

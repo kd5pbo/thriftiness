@@ -3,7 +3,7 @@
  * Function protoypes related to communications
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150210
+ * last modified 20150222
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -23,19 +23,21 @@
 #ifndef HAVE_COMM_H
 #define HAVE_COMM_H
 
+#include <stdint.h>
+
 /* Handshake with insert */
-int handshake(int fd);
+extern int handshake(int fd);
+
+/* Ok, they probably should have been void* */
 
 /* Send ALL the len bytes starting at b to tofd. */
-int send_all(int tofd, uint8_t *b, size_t len);
-
+extern int send_all(int tofd, uint8_t *b, size_t len);
 /* Receive len bytes from fmfd int b */
-int recv_all(int fmfd, uint8_t *b, size_t len);
+extern int recv_all(int fmfd, uint8_t *b, size_t len);
 
 /* Encrypt (with txctx) and send the n bytes at b to fd. */
-int send_enc(int fd, uint8_t *b, size_t n);
-
+extern int send_enc(int fd, uint8_t *b, size_t n);
 /* Decrypt (with rxctx) n bytes from fd into b. */
-int recv_enc(int fd, uint8_t *b, size_t n);
+extern int recv_enc(int fd, uint8_t *b, size_t n);
 
 #endif /* HAVE_COMM_H */
