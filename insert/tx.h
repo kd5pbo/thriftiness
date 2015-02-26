@@ -3,7 +3,7 @@
  * Code for thread to send data to insert
  * by J. Stuart McMurray
  * created 20150212
- * last modified 20150222
+ * last modified 20150226
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -37,6 +37,9 @@ struct handle_data {
         int fd;    /* File descriptor for shift */
         int *ret;  /* Return value from failed packet handle */
 };
+
+/* Mutex to prevent multiple sends */
+extern pthread_mutex_t txmutex;
 
 /* Get data from pcap, send to shift */
 extern void *insert_to_shift(void *data);

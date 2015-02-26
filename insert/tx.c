@@ -3,7 +3,7 @@
  * Code for thread to send data to insert
  * by J. Stuart McMurray
  * created 20150212
- * last modified 20150222
+ * last modified 20150226
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -29,6 +29,11 @@
 #include "sha2.h"
 #include "tx.h"
 
+/* Mutex to prevent concurrent sends */
+pthread_mutex_t txmutex;
+int txmutex_init = 0;
+
+
 /* Get data from pcap, send to shift */
 void *insert_to_shift(void *data) {
         struct its_data id;    /* Input data, pulled from the void* */
@@ -39,6 +44,12 @@ void *insert_to_shift(void *data) {
         memset(&hd, 0, sizeof(hd));
         ret = 0;
         hret = 0;
+
+        /* Make sure the mutex is initialized */
+        if (!txmutex_init) {
+                pthread_mutex_init(&txmutex, NULL);
+                txmutex_init = 1;
+        }
 
         /* Get a copy of the input data */
         memcpy(&id, data, sizeof(id));
@@ -107,6 +118,9 @@ void handle_packet(u_char *user, const struct pcap_pkthdr *header,
         /* Calculate hash */
         sha224(databuf, header->len+sizeof(len), txhash);
 
+        /* Lock the send lock */
+        pthread_mutex_lock(&txmutex);
+
 
 
         /* Send the bits.  We're boned if anything else is sending */
@@ -116,6 +130,9 @@ void handle_packet(u_char *user, const struct pcap_pkthdr *header,
                 *hd.ret = ret;
                 goto BREAK;
         }
+
+        pthread_mutex_unlock(&txmutex);
+
 
         /* Return success */
         *hd.ret = 0;
