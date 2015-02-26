@@ -3,7 +3,7 @@
  * Code to receive data from insert
  * by J. Stuart McMurray
  * created 20150212
- * last modified 20150222
+ * last modified 20150226
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -32,6 +32,10 @@
 #include "retvals.h"
 #include "sha2.h"
 
+/* Handle a keepalive packet from fd (after the initial 0x00).  Returns 0 on
+ * success.  */
+int handle_keepalive(int fd);
+
 /* Get data from shift (as fd) and put it on the wire. */
 void shift_to_insert(int fd, pcap_t *p) {
         uint16_t sizeh;                 /* Size in host byte order */
@@ -57,6 +61,15 @@ void shift_to_insert(int fd, pcap_t *p) {
                 /* Convert to host format */
                 sizeh = htons(*(uint16_t*)buf);
 
+                /* If the size is 0, it's a keepalive */
+                if (0 == sizeh) {
+                        if (0 != (ret = handle_keepalive(fd))) {
+                                return;
+                        }
+                        /* Process the next packet */
+                        continue;
+                }
+
                 /* Read that many bytes of data */
                 if (0 != (ret = recv_enc(fd, buf+sizeof(sizeh), sizeh))) {
                         break;
@@ -66,7 +79,6 @@ void shift_to_insert(int fd, pcap_t *p) {
                 if (0 != (ret = recv_enc(fd, rxhash, DIGESTLEN))) {
                         break;
                 }
-
 
                 /* Get the hash of the data */
                 /* Possible pitfall size_t -> unsigned int typecast */
@@ -90,4 +102,29 @@ void shift_to_insert(int fd, pcap_t *p) {
         
         /* If we're here, something failed (or shift disconnected) */
         set_reterr(ret);
+}
+
+/* Handle a keepalive packet from fd (after the initial 0x00).  Returns 0 on
+ * success.  */
+int handle_keepalive(int fd) {
+        uint16_t junksizen;      /* Number of junk bytes to read in NBO */
+        uint16_t junksizeh;      /* Number of junk bytes to read in HBO */
+        uint8_t buf[UINT16_MAX]; /* Receive buffer */
+        int ret;                 /* Return value */
+
+        /* Read the size of the junk data */
+        if (0 != (ret = recv_enc(fd, (uint8_t*)&junksizen,
+                                        sizeof(uint16_t)))) {
+                return ret;
+        }
+
+        /* Convert from network byte order to host byte order */
+        junksizeh = ntohs(junksizen);
+
+        /* Read (and discard) that many bytes of data */
+        if (0 != (ret = recv_enc(fd, buf, junksizeh))) {
+                return ret;
+        }
+
+        return 0;
 }
