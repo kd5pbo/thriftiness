@@ -52,6 +52,20 @@ size and checksum)  as two unsigned network-byte-order bytes, and appended with
 the SHA224 hash of the size and the
 data.
 
+Keepalives
+----------
+
+Shift will disconnect after TXRXTO seconds (transmit/receive timeout) if no
+data has been received from shift in that amount of time.  In order to prevent
+disconnects during periods of low traffic, keepalive packets are sent by shift.
+The first two bytes, normally the size, are the special value 0x0000, followed
+by two bytes in network byte order indicating the size of the junk data that
+follows the two-byte size.  The size, as well as the time between keepalives
+is entirely determined by shift in order to provide flexibility to evade IDS
+signatures.  Currently, the size is a random value between 2 and 1024 bytes,
+and the time is a random value between the minimum and maximum values specified
+upon running shift.
+
 Diagrams
 --------
 
@@ -80,7 +94,14 @@ DB (direction bytes) is 11 for insert->shift and 00 for shift->insert data.
 
 
 Message
-====
+=======
 16 bits---->|<-Variable length->|<-16 bits
 Data Length |      Payload      | Checksum
 <-------Checksummed part------->|
+
+
+Keeplalive
+==========
+--16 bits->|<--16 bits-->|<-variable length
+   Zeros   | Data Length | Junk Data.......
+
