@@ -5,7 +5,7 @@ package main
  * Functions to communicate with insert
  * by J. Stuart McMurray
  * created 20150115
- * last modified 20150217
+ * last modified 20150226
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -223,8 +223,9 @@ func (in *Insert) recvAll(n uint) ([]byte, error) {
 			in.c.Close()
 			return nil, err
 		}
+
 		/* Update count and buffer */
-		buf = append(buf, b...)
+		buf = append(buf, b[:r]...)
 		if 0 < r {
 			nRead += uint(r)
 		}
