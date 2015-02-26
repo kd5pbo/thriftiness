@@ -209,7 +209,6 @@ func (in *Insert) sendAll(b []byte) error {
 func (in *Insert) recvAll(n uint) ([]byte, error) {
 	nRead := uint(0) /* Number of bytes sent */
 	buf := []byte{}  /* Output buffer */
-	fmt.Printf("Got a request for %v bytes\n", n)
 
 	/* Prevent interleaved receives */
 	in.ism.Lock()

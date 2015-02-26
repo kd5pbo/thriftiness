@@ -23,7 +23,6 @@ package main
  */
 
 import (
-	"fmt"
 	"log"
 	"math"
 )
@@ -33,7 +32,6 @@ reported on echan.  The goroutine will terminate when dchan is closed. */
 func tx(tun Tunnel, in *Insert, echan chan error) {
 	for {
 		/* Read a frame from the tun device */
-		fmt.Printf("Waiting on a frame.\n")
 		f, err := tun.Read()
 		if nil != err {
 			echan <- err
@@ -64,7 +62,6 @@ func tx(tun Tunnel, in *Insert, echan chan error) {
 			log.Printf("Marshall error: %v", err)
 			continue
 		}
-		fmt.Printf("Snd: %02X\n", f)
 		/* Send frame to insert */
 		if err := in.SendEnc(mf); nil != err {
 			echan <- err

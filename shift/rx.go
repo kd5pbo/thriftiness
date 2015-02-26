@@ -85,14 +85,11 @@ func rx(tun Tunnel, in *Insert, echan chan error) {
 			}
 		}
 		if 0 != diff {
-			fmt.Printf("Got %02X, expected %02X\n", rxhash, exhashS)
-
 			echan <- ErrorBadChecksum
 		}
 
 		/* Send frame to the kernel */
 		if err := tun.Write(data); nil != err {
-			fmt.Printf("Error sending data to tunnel: %v\n", err)
 			echan <- err
 		}
 	}
