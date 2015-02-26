@@ -3,7 +3,7 @@
  * Functions related to communications
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150211
+ * last modified 20150226
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -42,7 +42,6 @@ int handshake(fd) {
         int ret;                        /* Return value */
         uint8_t rxname[INSTALLNAMELEN]; /* Received install name */
 
-
         /* Work out how much junk to read */
         endptr = NULL;
         if ((0 == (junksize = strtol(JUNKSIZE, &endptr, 0))) &&
@@ -53,7 +52,6 @@ int handshake(fd) {
         if (0 > junksize) {
                 return RET_INV_JUNK;
         }
-
 
         /* Read that much data */
         if (0 != recv_all(fd, junk, junksize)) {
@@ -98,6 +96,7 @@ int send_all(int tofd, uint8_t *b, size_t len) {
         nsent = 0;
         nleft = len;
         ret = -1;
+
         /* Keep going until all the data's been sent */
         while (0 < nleft) {
                 /* Try to send the data */
@@ -127,7 +126,6 @@ int recv_all(int fmfd, uint8_t *b, size_t len) {
         while (0 < nleft) {
                 if (-1 == (ret = recv(fmfd, (void*)(b+nread), nleft,
                                                 MSG_WAITALL))) {
-
                         return RET_ERR_RECV;
                 } else if (0 == ret) { /* DISCONNECT */
                         return RET_DISCON;
@@ -146,6 +144,7 @@ int send_enc(int fd, uint8_t *b, size_t n) {
         uint8_t *ebuf; /* Buffer for encrypted data */
         int ret;       /* Return value */
 
+
         /* Allocate buffer */
         ebuf = calloc(n, sizeof(uint8_t));
         /* Make a copy of the data */
@@ -154,6 +153,7 @@ int send_enc(int fd, uint8_t *b, size_t n) {
         txencrypt(ebuf, n);
         /* Send it */
         ret = send_all(fd, ebuf, n);
+
         free(ebuf);
         return ret;
 }

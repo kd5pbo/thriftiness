@@ -3,7 +3,7 @@
  * Functions dealing with the network
  * by J. Stuart McMurray
  * created 20150118
- * last modified 20150218
+ * last modified 20150226
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -25,7 +25,6 @@
 
 #include <arpa/inet.h>
 #include <netdb.h>
-#include <stdio.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -75,7 +74,6 @@ int peer_wait(void) {
                 /* Bind socket to address */
                 if (-1 == bind(lfd, cur->ai_addr, cur->ai_addrlen)) {
                         /* If we can't bind, close the FD, try later */
-                        perror("bind"); /* DEUBG */
                         close(lfd);
                         lfd = -1;
                         continue;

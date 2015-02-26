@@ -3,7 +3,7 @@
  * The remote half of thriftiness
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150222
+ * last modified 20150226
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -96,6 +96,7 @@ int main(void) {
                          * appropriate code */
                         return RET_UNK_ACT;
                 }
+
                 /* Note any errors connecting or waiting, try again or die. */
                 if (0 > remfd) {
                         goto TRYAGAIN;
