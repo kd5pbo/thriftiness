@@ -216,11 +216,6 @@ func MakeTun() (*TunOpenBSD, string, error) {
 			devname, err, output)
 	}
 	tun := &TunOpenBSD{f: t, devname: devname}
-	//if n, err := t.Write([]byte("foo")); nil != err { /* DEBUG */
-	//	fmt.Printf("Error on initial write: %v\n", err) /* DEBUG */
-	//} else { /* DEBUG */
-	//	fmt.Printf("Initial %v-byte write succeeded.\n", n) /* DEBUG */
-	//} /* DEBUG */
 	return tun, devname, nil
 }
 

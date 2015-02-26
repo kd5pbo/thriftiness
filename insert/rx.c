@@ -56,20 +56,17 @@ void shift_to_insert(int fd, pcap_t *p) {
 
                 /* Convert to host format */
                 sizeh = htons(*(uint16_t*)buf);
-                printf("Rexpecting 0x%hX bytes\n", sizeh); /* DEBUG */
 
                 /* Read that many bytes of data */
                 if (0 != (ret = recv_enc(fd, buf+sizeof(sizeh), sizeh))) {
                         break;
                 }
-                printf("RX Frame: ");for(i = sizeof(sizeh); i < sizeh+sizeof(sizeh);++i){printf("%02X", buf[i]);}printf("\n"); /* DEBUG */
 
                 /* Read the hash, as sent by shift */
                 if (0 != (ret = recv_enc(fd, rxhash, DIGESTLEN))) {
                         break;
                 }
 
-                printf("RX Hash: ");for(i = 0; i < DIGESTLEN;++i){printf("%02X", rxhash[i]);}printf("\n"); /* DEBUG */
 
                 /* Get the hash of the data */
                 /* Possible pitfall size_t -> unsigned int typecast */
@@ -79,7 +76,6 @@ void shift_to_insert(int fd, pcap_t *p) {
                 /* Make sure the two are the same */
                 if (0 != constcmp(comphash, rxhash, DIGESTLEN)) {
                         ret = RET_ERR_HASH;
-                        printf("Hash mismatch\n"); /* DEBUG */
                         break;
                 }
 

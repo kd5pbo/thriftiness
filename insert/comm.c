@@ -22,10 +22,8 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <errno.h> /* DEBUG */
 #include <limits.h>
 #include <stdint.h>
-#include <stdio.h> /* DEBUG */
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -45,7 +43,6 @@ int handshake(fd) {
         int i;                          /* Index variable */
         uint8_t rxname[INSTALLNAMELEN]; /* Received install name */
 
-        printf("In handshake()\n"); /* DEBUG */
 
         /* Work out how much junk to read */
         endptr = NULL;
@@ -59,18 +56,15 @@ int handshake(fd) {
         }
 
 
-        printf("reading %i bytes of junk\n", junksize); /* DEBUG */
         /* Read that much data */
         if (0 != recv_all(fd, junk, junksize)) {
                 return RET_ERR_JUNK;
         }
-        printf("Read junk\n"); /* DEBUG */
 
         /* Make the nonce */
         make_nonce(nonce);
 
         /* Send the nonce */
-        printf("Sending Nonce: ");for(i = 0; i < 8; ++i){printf("%02X ",nonce[i]);}printf("\n");/* DEBUG */
         if (0 != (ret = send_all(fd, nonce, 8))) {
                 return RET_ERR_NONCE;
         }
@@ -83,9 +77,6 @@ int handshake(fd) {
         if (0 != recv_enc(fd, rxname, INSTALLNAMELEN)) {
                 return RET_ERR_RIN;
         }
-        if (10 > strnlen(rxname, 20)) { /* DEBUG */
-                printf("Got install name: %s\n", rxname); /* DEBUG */
-        } /* DEBUG */
 
         /* Make sure it's what we expect */
         if (0 != (ret = constcmp(rxname, installname, INSTALLNAMELEN))) {
@@ -117,7 +108,6 @@ int send_all(int tofd, uint8_t *b, size_t len) {
                                                 MSG_NOSIGNAL))) {
                         return RET_ERR_SEND;
                 } else if (0 == ret) { /* DISCONNECT */
-                        printf("Disconnect detected on send.\n"); /* DEBUG */
                         return RET_DISCON;
                 }
                 /* Update counts */
@@ -136,17 +126,13 @@ int recv_all(int fmfd, uint8_t *b, size_t len) {
         nread = 0;
         nleft = len;
         ret = -1;
-        printf("Got a request for %i bytes off the wire.\n", len); /* DEBUG */
         /* Read bytes until we've got enough */
         while (0 < nleft) {
-                errno = 0; /* DEBUG */
                 if (-1 == (ret = recv(fmfd, (void*)(b+nread), nleft,
                                                 MSG_WAITALL))) {
-                        if (EAGAIN == errno) {printf("Recv timeout\n");}/* DEBUG */
 
                         return RET_ERR_RECV;
                 } else if (0 == ret) { /* DISCONNECT */
-                        printf("Disconnect detected on receive.\n"); /* DEBUG */
                         return RET_DISCON;
                 }
                         

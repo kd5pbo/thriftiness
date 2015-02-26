@@ -44,7 +44,6 @@ int peer_wait(void) {
         struct addrinfo *servinfo;
         struct addrinfo *cur;
         memset((void*)&hints, 0, sizeof(hints));
-        printf("In peer_wait()\n"); /* DEBUG */
         /* Set flags in hints to only give addresses on interfaces */
         hints.ai_flags = AI_ADDRCONFIG | AI_NUMERICHOST | AI_NUMERICSERV |
                 AI_PASSIVE;
@@ -83,7 +82,6 @@ int peer_wait(void) {
                 }
                 /* Try to listen */
                 if (-1 == listen(lfd, 0)) { /* Only one client allowed */
-                        printf("Listen fail\n"); /* DEBUG */
                         close(lfd);
                         lfd = -1;
                         continue;
@@ -99,11 +97,9 @@ int peer_wait(void) {
         
         /* Wait for a client */
         caddr_size = (socklen_t)sizeof(caddr);
-        printf("Waiting for shift\n"); /* DEBUG */
         if (-1 == (cfd = accept(lfd, (struct sockaddr*)&caddr, &caddr_size))) {
                 return RET_ERR_ACC;
         }
-        printf("Got shift.\n"); /* DEBUG */
         
         /* Stop listening and return the connected file descriptor */
         close(lfd);
@@ -162,15 +158,11 @@ int set_txrx_timeouts(int fd) {
 
         /* Set the timeouts */
         if (-1 == setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, optlen)) {
-                printf("SSO TX ERR\n"); /* DEBUG */
                 return RET_ERR_STO;
         }
         if (-1 == setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, optlen)) {
-                printf("SSO RX ERR\n"); /* DEBUG */
                 return RET_ERR_STO;
         }
-        memset(&t, 0, sizeof(t)); /* DEBUG */
-        if (-1 == getsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, &optlen)) {printf("Cannot getsockopt.\n");}else{printf("t.tv_sec: %li\n", t.tv_usec);} /* DEBUG */
         
         return 0;
 }

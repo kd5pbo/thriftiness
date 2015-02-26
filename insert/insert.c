@@ -136,16 +136,13 @@ int main(void) {
 TRYAGAIN:
                 /* Set the error code if it's nonzero */
                 if (0 != ret) {
-                        printf("Error code is %i\n", ret); /* DEBUG */
                         seterr(ret);
                 }
                 if (NULL != p) {
                         pcap_close(p);
                 }
                 close(remfd);
-                printf("Sleeping\n"); /* DEBUG */
                 sleep(sleepsec);
-                sleep(4); /* DEBUG */
         }
 }
 

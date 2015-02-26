@@ -72,7 +72,6 @@ func (f Frame) Marshall() ([]byte, error) {
 
 	/* Append hash */
 	hashA := sha256.Sum224(payload)
-	fmt.Printf("TX Hash: %02X\n", hashA) /* DEBUG */
 	hashS := make([]byte, len(hashA))
 	for i := 0; i < len(hashA); i++ {
 		hashS[i] = hashA[i]

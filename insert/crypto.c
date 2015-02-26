@@ -20,7 +20,6 @@
  * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
  */
 
-#include <inttypes.h> /* DEBUG */
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -74,7 +73,6 @@ void seed_random() {
 void noncestream_init() {
         uint8_t nonce_arr[8];
         int i;
-        printf("In noncestream_init()\n"); /* DEBUG */
 
 
         /* Don't do this twice */
@@ -139,12 +137,9 @@ void streams_init(uint8_t nonce[8]) {
         now8 = 0x000000000000 | now;
 
         /* Make a copy of the nonce with the time xored in */
-        printf("Timed nonce: "); /* DEBUG */
         for (i = 0; i < 8; ++i) {
                 timed_nonce[i] = nonce[i] ^ ((now8 >> (8 * i)) & 0xFF);
-                printf("[%02X^%02X->%02X]", nonce[i], (uint8_t)((now8 >> (8*i)) & 0xFF), timed_nonce[i]); /* DEBUG */
         }
-        printf("\n"); /* DEBUG */
 
         /* Make the two keystreams */
         timed_nonce[0] &= 0xFC;
