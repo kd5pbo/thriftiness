@@ -3,7 +3,7 @@
  * Function protoypes related to communications
  * by J. Stuart McMurray
  * created 20150122
- * last modified 20150222
+ * last modified 20150226
  *
  * Copyright (c) 2015 J. Stuart McMurray <kd5pbo@gmail.com>
  *
