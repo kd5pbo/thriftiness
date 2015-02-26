@@ -40,7 +40,6 @@ int handshake(fd) {
         int junksize;                   /* Number of junk bytes to read */
         uint8_t nonce[8];               /* Nonce for this connection */
         int ret;                        /* Return value */
-        int i;                          /* Index variable */
         uint8_t rxname[INSTALLNAMELEN]; /* Received install name */
 
 
@@ -84,7 +83,6 @@ int handshake(fd) {
         }
 
         /* Send it back */
-        printf("Sending name: %s\n", rxname);
         if (0 != send_enc(fd, rxname, INSTALLNAMELEN)) {
                 return RET_ERR_SIN;
         }
@@ -148,14 +146,12 @@ int send_enc(int fd, uint8_t *b, size_t n) {
         uint8_t *ebuf; /* Buffer for encrypted data */
         int ret;       /* Return value */
 
-        printf("pbuf[0]: %02X\n", b[0]);
         /* Allocate buffer */
         ebuf = calloc(n, sizeof(uint8_t));
         /* Make a copy of the data */
         memcpy(ebuf, b, n);
         /* Encrypt the buffer */
         txencrypt(ebuf, n);
-        printf("cbuf[0]: %02X\n", ebuf[0]);
         /* Send it */
         ret = send_all(fd, ebuf, n);
         free(ebuf);
