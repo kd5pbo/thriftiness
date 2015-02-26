@@ -80,7 +80,6 @@ int handshake(fd) {
 
         /* Make sure it's what we expect */
         if (0 != (ret = constcmp(rxname, installname, INSTALLNAMELEN))) {
-                printf("The install name is wrong!\n");
                 return RET_INV_RIN;
         }
 
