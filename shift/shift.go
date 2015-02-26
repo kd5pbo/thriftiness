@@ -6,7 +6,7 @@ package main
  * The local half of thriftiness, uses stdin/out
  * by J. Stuart McMurray
  * created 20150115
- * last modified 20150115
+ * last modified 20150126
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -31,9 +31,8 @@ import (
 	"log"
 	"os"
 	"strconv"
+	"time"
 )
-
-var ()
 
 /* Logger variables */
 var verbose, debug = easylogger.Generate(true)
@@ -42,27 +41,66 @@ func main() { os.Exit(mymain()) }
 func mymain() int {
 	/* Flags */
 	var (
-		addr = flag.String("addr", ":31337", "Address for "+
-			"listening or connecting.")
-		connect = flag.Bool("c", false, "Don't listen (the default), "+
-			"but rather connect to the address specified by "+
-			"-addr.")
-		ipv4 = flag.Bool("4", false, "Force IPv4.  May not be "+
-			"specified with -6.")
-		ipv6 = flag.Bool("6", false, "Force IPv6.  May not be "+
-			"specified with -4.")
-		insertName = flag.String("name", "0001", "Name set in "+
-			"insert to deter replay attacks")
-		insertNameLen = flag.Uint("nlen", 1024, "Length of data to "+
-			"send with -name, including size of -name.")
-		junk = flag.String("junk", "GET / HTTP/1.1\r\n", "Junk data "+
-			"in handshake")
-		key = flag.String("k", "012345678901234567890123456789AB",
+		addr = flag.String(
+			"addr",
+			":31337",
+			"Address for listening or connecting.",
+		)
+		connect = flag.Bool(
+			"c",
+			false,
+			"Don't listen (the default), but rather connect to "+
+				"the address specified by -addr.",
+		)
+		ipv4 = flag.Bool(
+			"4",
+			false,
+			"Force IPv4.  May not be specified with -6.",
+		)
+		ipv6 = flag.Bool(
+			"6",
+			false,
+			"Force IPv6.  May not be specified with -4.",
+		)
+		insertName = flag.String(
+			"name",
+			"0001",
+			"Name set in "+
+				"insert to deter replay attacks",
+		)
+		insertNameLen = flag.Uint(
+			"nlen",
+			1024,
+			"Length of data to send with -name, including size of -name.",
+		)
+		junk = flag.String(
+			"junk",
+			"GET / HTTP/1.1\r\n",
+			"Junk data in handshake",
+		)
+		key = flag.String(
+			"k",
+			"012345678901234567890123456789AB",
 			"Encryption key.  Must be 32 bytes long.  May "+
-				"contain non-ascii characters.")
-		timeoff = flag.Int64("o", 0, "Time offset.  This number of "+
-			"seconds will be added to the current time to match "+
-			"the target's idea of the time.  May be negative.")
+				"contain non-ascii characters.",
+		)
+		timeoff = flag.Int64(
+			"o",
+			0,
+			"Time offset.  This number of seconds will be added "+
+				"to the current time to match the target's "+
+				"idea of the time.  May be negative.",
+		)
+		minWait = flag.Duration(
+			"minka",
+			2*time.Second,
+			"Minimum idle time before sending keepalives.",
+		)
+		maxWait = flag.Duration(
+			"maxka",
+			170*time.Second,
+			"Maximum idle time before sending keepalives.",
+		)
 	)
 
 	/* Parse command-line flags */
@@ -134,7 +172,7 @@ func mymain() int {
 	echan := make(chan error, 1)
 
 	/* Fire off a goroutine to encrypt and send traffic */
-	go tx(tun, in, echan)
+	go tx(tun, in, echan, *minWait, *maxWait)
 
 	/* Fire off another to decrypt traffic and put it on the tun device */
 	go rx(tun, in, echan)
