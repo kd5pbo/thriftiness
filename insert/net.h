@@ -3,7 +3,7 @@
  * Defines and includes dealing with the network
  * by J. Stuart McMurray
  * created 20150118
- * last modified 201501218
+ * last modified 201501225
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
