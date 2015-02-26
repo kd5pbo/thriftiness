@@ -25,9 +25,6 @@
 
 #include "insert.h"
 
-/* Send/Receive timeout, in seconds */
-#define TXRXTO 30
-
 /* Wait for shift to connect.  Returns a value from retvals.h on failure. */
 int peer_wait(void);
 

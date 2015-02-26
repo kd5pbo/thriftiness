@@ -3,7 +3,7 @@
  * Defines and such for insert
  * by J. Stuart McMurray
  * created 20150117
- * last modified 20150220
+ * last modified 20150226
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
@@ -85,6 +85,10 @@
 /* Number of bytes per frame */
 #define PCAPFILT "arp or host 192.168.111.9\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0f"
 #define SNAPLEN 65535 /* Max size for two bytes */
+/* Send/Receive timeout, in seconds.  If the connection is idle for more than
+ * this amount of time, insert will close the connection. */
+#define TXRXTO 180
+
 
 /*******************************************
  * Nothing below here is user-configurable *
