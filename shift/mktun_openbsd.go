@@ -35,17 +35,35 @@ import (
 
 /* Flags speficic to openbsd */
 var (
-	mac = flag.String("mac", "", "MAC address to use for tun(4) "+
-		"device.  If none is specified, none will be set, and "+
-		"OpenBSD will assign an address.")
-	ip = flag.String("ip", "", "IP Address to use for tun(4) "+
-		"device.  Should probably be an IP address on the remote "+
-		"subnet.  If not set, no address will be assigned (e.g. for "+
-		"DHCP).")
-	netmask = flag.String("nm", "", "Netmask.  Will only be set if an "+
-		"IP address is specified.")
-	mtu = flag.Int("mtu", 1500, "MTU.  If 0 is specified, the default "+
-		"will be used.")
+	mac = flag.String(
+		"mac",
+		"",
+		"MAC address to use for tun(4) device.  If none is "+
+			"specified, none will be set, and OpenBSD will "+
+			"assign an address.",
+	)
+	ip = flag.String(
+		"ip",
+		"",
+		"IP Address to use for tun(4) device.  Should probably be "+
+			"an IP address on the remote subnet.  If not set, "+
+			"no address will be assigned (e.g. for DHCP).",
+	)
+	netmask = flag.String(
+		"nm",
+		"",
+		"Netmask.  Will only be set if an IP address is specified.",
+	)
+	mtu = flag.Int(
+		"mtu",
+		1500,
+		"MTU.  If 0 is specified, the default will be used.",
+	)
+	destroy = flag.Bool(
+		"rmtun",
+		true,
+		"Attempt to remove the tunnel with ifconfig destroy on exit",
+	)
 )
 
 const (
@@ -56,6 +74,7 @@ const (
 type TunOpenBSD struct {
 	f       *os.File /* /dev/tun file */
 	devname string   /* Device name */
+	destroy bool     /* Destroy on close */
 }
 
 /* Read and return a frame from the kernel */
@@ -90,15 +109,17 @@ func (t *TunOpenBSD) Write(b Frame) error {
 /* Close the tunnel */
 func (t *TunOpenBSD) Close() error {
 	cerr := t.f.Close()
-	if output, err := exec.Command(
-		"/sbin/ifconfig",
-		t.devname,
-		"destroy",
-	).CombinedOutput(); nil != err {
-		debug("Unable to destroy %v: %v (output %v)",
-			t.devname, err, strings.TrimSpace(string(output)))
+	if t.destroy {
+		if output, err := exec.Command(
+			"/sbin/ifconfig",
+			t.devname,
+			"destroy",
+		).CombinedOutput(); nil != err {
+			debug("Unable to destroy %v: %v (output %v)",
+				t.devname, err, strings.TrimSpace(string(output)))
+		}
+		debug("Destroyed %v", t.devname)
 	}
-	debug("Destroyed %v", t.devname)
 	return cerr
 }
 
@@ -215,7 +236,7 @@ func MakeTun() (*TunOpenBSD, string, error) {
 		return nil, "", fmt.Errorf("Bringing %v up: %v (output %v)",
 			devname, err, output)
 	}
-	tun := &TunOpenBSD{f: t, devname: devname}
+	tun := &TunOpenBSD{f: t, devname: devname, destroy: *destroy}
 	return tun, devname, nil
 }
 
