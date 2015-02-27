@@ -83,7 +83,7 @@
  * nearly any other BPF filter.  Padded on the right with nulls, and ends in a
  * f.  NB: 'ip broadcast' probably won't work. */
 /* Number of bytes per frame */
-#define PCAPFILT "arp or host 192.168.111.9\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0f"
+#define PCAPFILT "arp or dst 192.168.111.9\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0f"
 #define SNAPLEN 65535 /* Max size for two bytes */
 /* Send/Receive timeout, in seconds.  If the connection is idle for more than
  * this amount of time, insert will close the connection. */
