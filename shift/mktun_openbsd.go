@@ -5,7 +5,7 @@ package main
  * OpenBSD-specific source to make the tun(4) device
  * by J. Stuart McMurray
  * created 20150116
- * last modified 20150218
+ * last modified 20150226
  *
  * Copyright (c) 2014 J. Stuart McMurray <kd5pbo@gmail.com>
  *
