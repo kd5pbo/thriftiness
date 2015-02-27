@@ -108,7 +108,6 @@ func (t *TunOpenBSD) Write(b Frame) error {
 
 /* Close the tunnel */
 func (t *TunOpenBSD) Close() error {
-	cerr := t.f.Close()
 	if t.destroy {
 		if output, err := exec.Command(
 			"/sbin/ifconfig",
@@ -120,6 +119,7 @@ func (t *TunOpenBSD) Close() error {
 		}
 		debug("Destroyed %v", t.devname)
 	}
+	cerr := t.f.Close()
 	return cerr
 }
 
