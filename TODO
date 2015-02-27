@@ -1,4 +1,7 @@
   Use ioctl SIOCSIFADDR struct ether_addr *addr to set the mac address
   Reallocate buffer if incoming frame is too big
   Make sure shift detects failed reads
+  Debugging statements in go when parameters on the tunnel are set
+  Better Documentation
+
 
