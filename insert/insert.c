@@ -80,9 +80,11 @@ int main(void) {
         pthread_mutex_init(&retmtx, NULL);
 
         /* Set up the stream to make randomish nonces */
-        ret = 0;
         for (;;) {
                 reterr = 0;
+                p = NULL;
+                ret = 0;
+
                 /* Clear the error variable */
                 unsetenv(ERRVAR);
 
@@ -112,7 +114,6 @@ int main(void) {
                 }
 
                 /* Start pcap going */
-                p = NULL;
                 if (0 > (ret = pcap_setup(&p))) {
                         goto TRYAGAIN;
                 }
