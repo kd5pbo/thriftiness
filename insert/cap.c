@@ -36,7 +36,7 @@ int pcap_setup(pcap_t **pret) {
         memset(&fp, 0, sizeof(fp));
 
         /* Try to open the interface */
-        if (NULL == (p = pcap_open_live(PCAPINT, SNAPLEN, 1, -1, NULL))) {
+        if (NULL == (p = pcap_open_live(PCAPINT, SNAPLEN, 0, -1, NULL))) {
                 return RET_ERR_PINIT;
         }
 
