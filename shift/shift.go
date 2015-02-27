@@ -30,6 +30,7 @@ import (
 	"github.com/kd5pbo/easylogger"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"time"
 )
@@ -150,6 +151,19 @@ func mymain() int {
 	log.Printf("Tunnel device: %v", tunname)
 	/* Destroy the tun device when we're done with it */
 	defer func() { tun.Close() }()
+
+	/* Register a callback for SIGINT to close the tunnel befor exiting */
+	schan := make(chan os.Signal)
+	signal.Notify(schan, os.Interrupt)
+	go func() {
+		/* Wait for a Ctrl+C */
+		<-schan
+		/* Close the tun device */
+		tun.Close()
+		/* Exit */
+		os.Exit(1)
+	}()
+
 	/* Make or accept a connection */
 	in, err := NewInsert(
 		*addr,
